@@ -264,6 +264,16 @@ async function getDialogByOrder(orderNumber) {
   return r.rows;
 }
 
+// ── Промпты ───────────────────────────────────────────────────────────────
+
+async function getAiPrompt(key) {
+  const r = await pool.query(
+    'SELECT * FROM ai_prompts WHERE key = $1 AND is_active = true',
+    [key]
+  );
+  return r.rows[0] || null;
+}
+
 // ── Специалисты ───────────────────────────────────────────────────────────
 
 async function getActiveSpecialists() {
@@ -292,6 +302,8 @@ module.exports = {
   getProductionTime, getPricingConfig,
   // Диалог
   saveDialogMessage, linkSessionToOrder, getDialogByOrder,
+  // Промпты
+  getAiPrompt,
   // Специалисты
   getActiveSpecialists,
 };

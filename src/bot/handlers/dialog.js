@@ -174,10 +174,10 @@ async function handleUseCase(ctx, msg, s, client) {
 
   // ИИ подбирает
   const materials  = await db.getAllMaterials();
-  const suggested  = await ai.suggestMaterialAI(text, materials);
-  const material   = materials.find(m => m.code === suggested);
-  s.suggestedMaterial = suggested;
-  session.nextStep(s, STEPS.MATERIAL_SUGGESTION);
+  const suggested  = await ai.suggestMaterial(text, materials);
+   const material   = materials.find(m => m.code === suggested);
+   s.suggestedMaterial = suggested;
+   session.nextStep(s, STEPS.MATERIAL_SUGGESTION);
 
   return ctx.reply(ai.formatSuggestion(suggested, material), {
     parse_mode: 'Markdown',
