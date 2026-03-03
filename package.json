@@ -1,0 +1,20 @@
+{
+  "name": "hevial-bot",
+  "version": "1.0.0",
+  "description": "Hevial 3D printing Telegram bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "dotenv": "^17.3.1",
+    "pg": "^8.11.3",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
