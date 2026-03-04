@@ -1,7 +1,8 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const axios = require('axios');
 const db = require('../db');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const API_KEY = process.env.GEN_API_KEY;
+const API_BASE_URL = 'https://api.gen-api.ru/api/v1';
 
 // кэш промптов из БД
 let _promptCache = {};
@@ -67,6 +68,11 @@ function suggestMaterialLocal(useDescription) {
 
 async function _callClaudeAPI(useDescription, materials) {
   try {
+    if (!API_KEY) {
+      console.error('[AI] API_KEY не установлен в переменных окружения');
+      return suggestMaterialLocal(useDescription).code;
+    }
+
     const prompt = await getPrompt('material_suggest');
     if (!prompt) {
       console.warn('[AI] Промпт не найден в БД, fallback на эвристику');
@@ -84,29 +90,58 @@ async function _callClaudeAPI(useDescription, materials) {
       .replace('{{CATALOG}}', catalogText)
       .replace('{{MATERIAL_CODES}}', validCodes);
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 20,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    });
+    console.log('[AI] Вызов Claude API с описанием:', useDescription.substring(0, 50));
 
-    const answer = response.content[0].text
+    const response = await axios.post(
+      `${API_BASE_URL}/claude/chat/completions`,
+      {
+        model: 'claude-3.5-sonnet',
+        max_tokens: 20,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userMessage,
+          },
+        ],
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('[AI] Ответ от API:', JSON.stringify(response.data).substring(0, 200));
+
+    if (!response.data?.choices?.[0]?.message?.content) {
+      console.warn('[AI] Неожиданный формат ответа от API');
+      return suggestMaterialLocal(useDescription).code;
+    }
+
+    const answer = response.data.choices[0].message.content
       .trim()
       .toUpperCase()
       .replace(/[^A-Z0-9_]/g, '');
 
+    console.log('[AI] Распарсенный ответ:', answer);
+
     const validList = materials.map(m => m.code);
     if (validList.includes(answer)) {
-      console.log(`[AI] Claude выбрал: ${answer}`);
+      console.log(`[AI] ✅ Claude выбрал валидный код: ${answer}`);
       return answer;
     }
 
-    console.warn(`[AI] Claude вернул невалидный код: "${answer}", fallback`);
+    console.warn(`[AI] Claude вернул невалидный код: "${answer}", доступные: ${validList.join(', ')}`);
     return suggestMaterialLocal(useDescription).code;
 
   } catch (err) {
-    console.error('[AI] Ошибка Claude API, fallback на эвристику:', err.message);
+    console.error('[AI] ❌ Ошибка Claude API:', err.message);
+    if (err.response?.data) {
+      console.error('[AI] API error response:', JSON.stringify(err.response.data).substring(0, 300));
+    }
+    console.log('[AI] Fallback на эвристику');
     return suggestMaterialLocal(useDescription).code;
   }
 }

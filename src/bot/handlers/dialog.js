@@ -10,71 +10,82 @@ const notify      = require('../handlers/notification');
 // ── Главная точка входа ───────────────────────────────────────────────────
 
 async function handle(ctx) {
-  const userId = ctx.from.id;
-  const chatId = ctx.chat.id;
-  const msg    = ctx.message;
+  try {
+    const userId = ctx.from.id;
+    const chatId = ctx.chat.id;
+    const msg    = ctx.message;
 
-  // Получить или создать клиента в БД
-  const client = await db.getOrCreateClient(ctx.from);
+    // Получить или создать клиента в БД
+    const client = await db.getOrCreateClient(ctx.from);
 
-  // Проверить блокировку
-  if (client.is_blocked) {
-    return ctx.reply('Ваш аккаунт заблокирован. Обратитесь в поддержку.');
+    // Проверить блокировку
+    if (client.is_blocked) {
+      return ctx.reply('Ваш аккаунт заблокирован. Обратитесь в поддержку.');
+    }
+
+    // Глобальные команды — работают из любого состояния
+    const text = msg?.text?.trim() || '';
+    if (text === '/start')      return handleStart(ctx, client);
+    if (text === '/specialist') return handleTransferToSpecialist(ctx, client);
+    if (text === '/status')     return handleStatus(ctx, client);
+    if (text === '/help')       return handleHelp(ctx);
+
+    // Получить сессию
+    const s = session.getOrCreate(userId, chatId);
+    console.log(`[Handle] Пользователь ${userId}, текущий шаг: ${s.currentStep}, сообщение: "${text.substring(0, 30)}..."`);
+
+    // Сохранить сообщение пользователя в историю
+    await saveUserMessage(msg, client, s);
+
+    // Маршрутизация по текущему шагу
+    switch (s.currentStep) {
+      case STEPS.START:
+        await handleStart(ctx, client); break;
+      case STEPS.AWAITING_FILE:
+        await handleAwaitingFile(ctx, msg, s, client); break;
+      case STEPS.AWAITING_LINK:
+        await handleAwaitingLink(ctx, msg, s, client); break;
+      case STEPS.AWAITING_USE_CASE:
+        await handleUseCase(ctx, msg, s, client); break;
+      case STEPS.MATERIAL_SUGGESTION:
+        await handleMaterialSuggestion(ctx, msg, s, client); break;
+      case STEPS.MATERIAL_CLIENT_CHOICE:
+        await handleMaterialClientChoice(ctx, msg, s, client); break;
+      case STEPS.MATERIAL_CHECK:
+        await checkMaterialCompatibility(ctx, s, s.clientMaterialWish); break;
+      case STEPS.MATERIAL_CONFLICT_RESOLVE:
+        await handleMaterialConflict(ctx, msg, s, client); break;
+      case STEPS.METHOD_WARNING:
+        await handleMethodWarning(ctx, msg, s, client); break;
+      case STEPS.AWAITING_SIZE:
+        await handleSize(ctx, msg, s, client); break;
+      case STEPS.AWAITING_QUANTITY:
+        await handleQuantity(ctx, msg, s, client); break;
+      case STEPS.AWAITING_URGENCY:
+        await handleUrgency(ctx, msg, s, client); break;
+      case STEPS.AWAITING_DELIVERY:
+        await handleDelivery(ctx, msg, s, client); break;
+      case STEPS.ORDER_SUMMARY:
+        await handleOrderSummary(ctx, msg, s, client); break;
+      case STEPS.AWAITING_REVIEW:
+        await handleReview(ctx, msg, s, client); break;
+      case STEPS.WAITING_SPECIALIST:
+        await handleWaitingSpecialist(ctx, msg, s, client); break;
+      default:
+        console.warn(`[Dialog] Неизвестный шаг: ${s.currentStep}`);
+        await ctx.reply('Введите /start чтобы начать.');
+    }
+
+    console.log(`[Handle] После обработки шаг ${s.currentStep}`);
+    session.save(userId, s);
+  } catch (err) {
+    console.error('[Dialog] Handle error:', err.message, err.stack);
+    try {
+      await ctx.reply('Что-то пошло не так 😔 Попробуйте /start');
+    } catch (replyErr) {
+      console.error('[Dialog] Failed to send error reply:', replyErr.message);
+    }
   }
-
-  // Глобальные команды — работают из любого состояния
-  const text = msg?.text?.trim() || '';
-  if (text === '/start')      return handleStart(ctx, client);
-  if (text === '/specialist') return handleTransferToSpecialist(ctx, client);
-  if (text === '/status')     return handleStatus(ctx, client);
-  if (text === '/help')       return handleHelp(ctx);
-
-  // Получить сессию
-  const s = session.getOrCreate(userId, chatId);
-
-  // Сохранить сообщение пользователя в историю
-  await saveUserMessage(msg, client, s);
-
-  // Маршрутизация по текущему шагу
-  let response;
-  switch (s.currentStep) {
-    case STEPS.START:
-      response = await handleStart(ctx, client); break;
-    case STEPS.AWAITING_FILE:
-      response = await handleAwaitingFile(ctx, msg, s, client); break;
-    case STEPS.AWAITING_LINK:
-      response = await handleAwaitingLink(ctx, msg, s, client); break;
-    case STEPS.AWAITING_USE_CASE:
-      response = await handleUseCase(ctx, msg, s, client); break;
-    case STEPS.MATERIAL_SUGGESTION:
-      response = await handleMaterialSuggestion(ctx, msg, s, client); break;
-    case STEPS.MATERIAL_CLIENT_CHOICE:
-      response = await handleMaterialClientChoice(ctx, msg, s, client); break;
-    case STEPS.MATERIAL_CHECK:
-      response = await checkMaterialCompatibility(ctx, s, s.clientMaterialWish); break;
-    case STEPS.MATERIAL_CONFLICT_RESOLVE:
-      response = await handleMaterialConflict(ctx, msg, s, client); break;
-    case STEPS.METHOD_WARNING:
-      response = await handleMethodWarning(ctx, msg, s, client); break;
-    case STEPS.AWAITING_SIZE:
-      response = await handleSize(ctx, msg, s, client); break;
-    case STEPS.AWAITING_QUANTITY:
-      response = await handleQuantity(ctx, msg, s, client); break;
-    case STEPS.AWAITING_URGENCY:
-      response = await handleUrgency(ctx, msg, s, client); break;
-    case STEPS.AWAITING_DELIVERY:
-      response = await handleDelivery(ctx, msg, s, client); break;
-    case STEPS.ORDER_SUMMARY:
-      response = await handleOrderSummary(ctx, msg, s, client); break;
-    case STEPS.AWAITING_REVIEW:
-      response = await handleReview(ctx, msg, s, client); break;
-    case STEPS.WAITING_SPECIALIST:
-      response = await handleWaitingSpecialist(ctx, msg, s, client); break;
-    default:
-      response = () => ctx.reply('Введите /start чтобы начать.');
-  }
-
-  session.save(userId, s);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -108,18 +119,49 @@ async function handleStart(ctx, client) {
 
 async function handleAwaitingFile(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
+  console.log(`[HandleAwaitingFile] Получено сообщение: "${text}"`, { hasDocument: !!msg?.document, hasPhoto: !!msg?.photo });
 
   if (text.includes('специалист') || text === 'action_specialist')
     return handleTransferToSpecialist(ctx, client);
 
   if (text.includes('ссылк') || text === 'action_link') {
+    console.log('[HandleAwaitingFile] Переход на AWAITING_LINK');
     session.nextStep(s, STEPS.AWAITING_LINK);
     return ctx.reply('🔗 Пришлите ссылку на модель (Thingiverse, Cults3D и др.):');
   }
 
+  if (text.includes('опишу') || text === 'file_none') {
+    console.log('[HandleAwaitingFile] Выбран способ описания, переход на AWAITING_USE_CASE');
+    session.nextStep(s, STEPS.AWAITING_USE_CASE);
+    return askUseCase(ctx);
+  }
+
+  if (text === 'file_upload' || text === 'file_photo') {
+    console.log('[HandleAwaitingFile] Ожидание загрузки файла/фото...');
+    session.nextStep(s, STEPS.AWAITING_FILE);
+    const helpMsg = text === 'file_photo' 
+      ? 'Загрузите фото детали (можно несколько) и напишите размеры.'
+      : 'Загрузите файл модели (STL, STEP и т.д.)';
+    return ctx.reply(helpMsg);
+  }
+
+  if (text === 'action_order' || text === 'order') {
+    console.log('[HandleAwaitingFile] Повторный запрос файла для заказа');
+    session.nextStep(s, STEPS.AWAITING_FILE);
+    return ctx.reply('У вас есть файл модели или фото детали?', {
+      reply_markup: { inline_keyboard: [
+        [{ text: '📎 Загрузить файл',         callback_data: 'file_upload' }],
+        [{ text: '📷 Только фото + размеры',   callback_data: 'file_photo'  }],
+        [{ text: '❓ Ничего нет, опишу задачу', callback_data: 'file_none'  }],
+      ]}
+    });
+  }
+
   if (msg?.document) {
+    console.log('[HandleAwaitingFile] Файл получен, переход на AWAITING_USE_CASE');
     s.fileUrl = 'tg_file:' + msg.document.file_id;
     session.nextStep(s, STEPS.AWAITING_USE_CASE);
+    console.log(`[HandleAwaitingFile] Новый шаг установлен: ${s.currentStep}`);
     return askUseCase(ctx);
   }
 
@@ -157,7 +199,10 @@ async function handleAwaitingLink(ctx, msg, s, client) {
 
 async function handleUseCase(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
+  console.log(`[HandleUseCase] Описание использования: "${text.substring(0, 50)}..."`);
+  
   if (text.length < 5) {
+    console.log('[HandleUseCase] Описание слишком короткое');
     session.incrementRetry(s);
     return ctx.reply('Расскажите подробнее — где будет использоваться деталь? (среда, нагрузки, температура)');
   }
@@ -167,26 +212,23 @@ async function handleUseCase(ctx, msg, s, client) {
   // Клиент уже назвал материал?
   const named = extractMaterial(text);
   if (named) {
+    console.log(`[HandleUseCase] Распознан материал: ${named}`);
     s.clientMaterialWish = named;
     session.nextStep(s, STEPS.MATERIAL_CHECK);
     return askMaterialChoice(ctx, named);
   }
 
   // ИИ подбирает
+  console.log('[HandleUseCase] Запрос материалов из БД и вызов AI...');
   const materials  = await db.getAllMaterials();
   const suggested  = await ai.suggestMaterial(text, materials);
-   const material   = materials.find(m => m.code === suggested);
-   s.suggestedMaterial = suggested;
-   session.nextStep(s, STEPS.MATERIAL_SUGGESTION);
+  const material    = materials.find(m => m.code === suggested);
+  s.suggestedMaterial = suggested;
+  console.log(`[HandleUseCase] AI выбрал: ${suggested}`);
+  session.nextStep(s, STEPS.MATERIAL_SUGGESTION);
 
-  return ctx.reply(ai.formatSuggestion(suggested, material), {
-    parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: [
-      [{ text: '✅ Согласен с выбором',       callback_data: 'mat_agree'      }],
-      [{ text: '🔄 Показать другие варианты', callback_data: 'mat_alternatives'}],
-      [{ text: '✏️ Хочу конкретный материал', callback_data: 'mat_own'        }],
-    ]}
-  });
+  const suggestionText = ai.formatSuggestion(suggested, material);
+  return ctx.reply(suggestionText, { parse_mode: 'Markdown' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -195,13 +237,17 @@ async function handleUseCase(ctx, msg, s, client) {
 
 async function handleMaterialSuggestion(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
+  console.log(`[MaterialSuggestion] Входящий текст: "${text}"`);
+  console.log(`[MaterialSuggestion] Suggested material: ${s.suggestedMaterial}`);
 
-  if (text.includes('✅') || text.includes('mat_agree') || text.toLowerCase().includes('согла')) {
+  if (text === 'mat_agree' || text.includes('✅') || text.includes('mat_agree') || text.toLowerCase().includes('согла')) {
+    console.log('[MaterialSuggestion] Пользователь согласился с материалом');
     s.confirmedMaterial = s.suggestedMaterial;
     return proceedToMethodWarning(ctx, s);
   }
 
-  if (text.includes('🔄') || text === 'mat_alternatives') {
+  if (text === 'mat_alternatives' || text.includes('🔄') || text.includes('mat_alternatives')) {
+    console.log('[MaterialSuggestion] Пользователь запросил альтернативы');
     const materials    = await db.getAllMaterials();
     const alternatives = materials
       .filter(m => m.code !== s.suggestedMaterial)
@@ -220,11 +266,18 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
     });
   }
 
-  if (text.includes('✏️') || text === 'mat_own') {
+  if (text === 'mat_own' || text.includes('✏️') || text.includes('mat_own')) {
+    console.log('[MaterialSuggestion] Пользователь хочет выбрать сам');
     session.nextStep(s, STEPS.MATERIAL_CLIENT_CHOICE);
     return ctx.reply('Напишите какой материал хотите (например: PLA, PETG, фотополимер):');
   }
 
+  if (text === 'action_specialist' || text.includes('специалист')) {
+    console.log('[MaterialSuggestion] Пользователь запросил специалиста из альтернатив');
+    return handleTransferToSpecialist(ctx, client);
+  }
+
+  console.log(`[MaterialSuggestion] Не распознан callback, повтор ${s.retryCount}`);
   session.incrementRetry(s);
   return ctx.reply('Пожалуйста, выберите один из вариантов:', {
     reply_markup: { inline_keyboard: [
@@ -237,12 +290,16 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
 
 async function handleMaterialClientChoice(ctx, msg, s, client) {
   const text     = msg?.text?.trim() || '';
+  console.log(`[MaterialClientChoice] Входящий текст: "${text}"`);
+  
   const material = extractMaterial(text);
   if (!material) {
+    console.log('[MaterialClientChoice] Материал не распознан');
     session.incrementRetry(s);
     if (session.isRetryLimitReached(s)) return handleTransferToSpecialist(ctx, client);
     return ctx.reply('Не распознал материал. Напишите: PLA, PETG, ABS, TPU, PEEK, нейлон, фотополимер');
   }
+  console.log(`[MaterialClientChoice] Распознан материал: ${material}`);
   s.clientMaterialWish = material;
   session.nextStep(s, STEPS.MATERIAL_CHECK);
   return checkMaterialCompatibility(ctx, s, material);
@@ -282,10 +339,14 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
 
 async function handleMaterialConflict(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
+  console.log(`[MaterialConflict] Входящий текст: "${text}"`);
+  
   if (text.includes('🔄') || text === 'conflict_accept') {
+    console.log('[MaterialConflict] Пользователь согласился с рекомендацией');
     s.confirmedMaterial = s.suggestedMaterial || 'PETG';
     s.materialOverridden = false;
   } else {
+    console.log('[MaterialConflict] Пользователь оставил свой выбор');
     s.confirmedMaterial  = s.clientMaterialWish;
     s.materialOverridden = true;
   }
@@ -322,10 +383,15 @@ async function proceedToMethodWarning(ctx, s) {
 
 async function handleMethodWarning(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
+  console.log(`[MethodWarning] Входящий текст: "${text}"`);
+  
   if (text.includes('🔄') || text === 'method_change') {
+    console.log('[MethodWarning] Пользователь хочет изменить материал');
     session.nextStep(s, STEPS.MATERIAL_CLIENT_CHOICE);
     return ctx.reply('Напишите какой материал хотите использовать:');
   }
+  
+  console.log('[MethodWarning] Переход на размеры');
   session.nextStep(s, STEPS.AWAITING_SIZE);
   return ctx.reply(
     '📐 Укажите размеры детали в мм:\nФормат: *Длина Ширина Высота*\nНапример: `50 30 20`\n\nИли загрузите STL/STEP файл.',

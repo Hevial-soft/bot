@@ -6,57 +6,57 @@
 const STEPS = {
   // ── Начальные шаги ────────────────────────────────────────────────────────
   START: 'START',                           // Первый запуск /start
-  GREETING: 'GREETING',                     // Приветствие пользователя
+  AWAITING_FILE: 'AWAITING_FILE',           // Ожидание файла/ссылки/описания
+  AWAITING_LINK: 'AWAITING_LINK',           // Ожидание ссылки на модель
+  AWAITING_USE_CASE: 'AWAITING_USE_CASE',   // Ожидание описания использования
   
-  // ── Основной диалог оформления заказа ─────────────────────────────────────
-  WAITING_SERVICE: 'WAITING_SERVICE',       // Ожидание выбора услуги (печать, дизайн и т.д.)
-  WAITING_DESCRIPTION: 'WAITING_DESCRIPTION', // Описание заказа/модели
-  WAITING_BUDGET: 'WAITING_BUDGET',         // Указание бюджета
-  WAITING_DEADLINE: 'WAITING_DEADLINE',     // Сроки выполнения
-  WAITING_CONTACT: 'WAITING_CONTACT',       // Контактная информация (телефон, email)
-  WAITING_FILES: 'WAITING_FILES',           // Загрузка файлов (3D модели)
+  // ── Подбор материала ──────────────────────────────────────────────────────
+  MATERIAL_SUGGESTION: 'MATERIAL_SUGGESTION', // Показана рекомендация AI
+  MATERIAL_CLIENT_CHOICE: 'MATERIAL_CLIENT_CHOICE', // Клиент выбирает материал
+  MATERIAL_CHECK: 'MATERIAL_CHECK',         // Проверка совместимости материала
+  MATERIAL_CONFLICT_RESOLVE: 'MATERIAL_CONFLICT_RESOLVE', // Разрешение конфликта
   
-  // ── Подтверждение ────────────────────────────────────────────────────────
-  CONFIRM_ORDER: 'CONFIRM_ORDER',           // Подтверждение перед отправкой
-  ORDER_CREATED: 'ORDER_CREATED',           // Заказ успешно создан
+  // ── Метод печати и размеры ────────────────────────────────────────────────
+  METHOD_WARNING: 'METHOD_WARNING',         // Информация о методе печати
+  AWAITING_SIZE: 'AWAITING_SIZE',           // Ожидание размеров детали
+  AWAITING_QUANTITY: 'AWAITING_QUANTITY',   // Ожидание количества
+  AWAITING_URGENCY: 'AWAITING_URGENCY',     // Выбор срочности
+  AWAITING_DELIVERY: 'AWAITING_DELIVERY',   // Выбор способа доставки
   
-  // ── Статусы заказа ───────────────────────────────────────────────────────
-  ORDER_PROCESSING: 'ORDER_PROCESSING',     // На рассмотрении у специалиста
-  PROCESSING_DETAILS: 'PROCESSING_DETAILS', // Требует уточнения деталей
-  WAITING_SPECIALIST: 'WAITING_SPECIALIST', // Ожидание ответа специалиста
-  IN_PROGRESS: 'IN_PROGRESS',               // Заказ в работе
-  COMPLETED: 'COMPLETED',                   // Завершён и доставлен
-  CANCELLED: 'CANCELLED',                   // Отменён
+  // ── Подтверждение и отзыв ─────────────────────────────────────────────────
+  ORDER_SUMMARY: 'ORDER_SUMMARY',           // Итоговое подтверждение заказа
+  ORDER_CONFIRMED: 'ORDER_CONFIRMED',       // Заказ подтвержден
+  AWAITING_REVIEW: 'AWAITING_REVIEW',       // Ожидание отзыва
   
   // ── Коммуникация со специалистом ──────────────────────────────────────────
-  BRIDGE_ACTIVE: 'BRIDGE_ACTIVE',           // Активный прямой диалог
-  WAITING_RESPONSE: 'WAITING_RESPONSE',     // Ожидание ответа из bridge
+  WAITING_SPECIALIST: 'WAITING_SPECIALIST', // Ожидание ответа специалиста
   
   // ── Служебные ────────────────────────────────────────────────────────────
-  IDLE: 'IDLE',                             // В ожидании команды
-  ERROR: 'ERROR',                           // Предыдущее действие вызвало ошибку
+  CANCELLED: 'CANCELLED',                   // Отменён
 };
 
 /**
  * Переходы между этапами
  */
 const STEP_TRANSITIONS = {
-  [STEPS.START]: [STEPS.GREETING],
-  [STEPS.GREETING]: [STEPS.WAITING_SERVICE],
-  [STEPS.WAITING_SERVICE]: [STEPS.WAITING_DESCRIPTION],
-  [STEPS.WAITING_DESCRIPTION]: [STEPS.WAITING_BUDGET],
-  [STEPS.WAITING_BUDGET]: [STEPS.WAITING_DEADLINE],
-  [STEPS.WAITING_DEADLINE]: [STEPS.WAITING_CONTACT],
-  [STEPS.WAITING_CONTACT]: [STEPS.WAITING_FILES, STEPS.CONFIRM_ORDER],
-  [STEPS.WAITING_FILES]: [STEPS.CONFIRM_ORDER],
-  [STEPS.CONFIRM_ORDER]: [STEPS.ORDER_CREATED, STEPS.WAITING_SERVICE], // Вернуться или создать
-  [STEPS.ORDER_CREATED]: [STEPS.ORDER_PROCESSING, STEPS.IDLE],
-  [STEPS.ORDER_PROCESSING]: [STEPS.PROCESSING_DETAILS, STEPS.WAITING_SPECIALIST],
-  [STEPS.PROCESSING_DETAILS]: [STEPS.CONFIRM_ORDER], // Вернуться на подтверждение
-  [STEPS.WAITING_SPECIALIST]: [STEPS.IN_PROGRESS, STEPS.CANCELLED],
-  [STEPS.IN_PROGRESS]: [STEPS.COMPLETED, STEPS.BRIDGE_ACTIVE],
-  [STEPS.BRIDGE_ACTIVE]: [STEPS.IN_PROGRESS, STEPS.IDLE],
-  [STEPS.IDLE]: [STEPS.WAITING_SERVICE, STEPS.START], // Может начать новый заказ
+  [STEPS.START]: [STEPS.AWAITING_FILE],
+  [STEPS.AWAITING_FILE]: [STEPS.AWAITING_LINK, STEPS.AWAITING_USE_CASE, STEPS.WAITING_SPECIALIST],
+  [STEPS.AWAITING_LINK]: [STEPS.AWAITING_USE_CASE],
+  [STEPS.AWAITING_USE_CASE]: [STEPS.MATERIAL_SUGGESTION, STEPS.MATERIAL_CLIENT_CHOICE],
+  [STEPS.MATERIAL_SUGGESTION]: [STEPS.MATERIAL_CLIENT_CHOICE, STEPS.METHOD_WARNING],
+  [STEPS.MATERIAL_CLIENT_CHOICE]: [STEPS.MATERIAL_CHECK],
+  [STEPS.MATERIAL_CHECK]: [STEPS.MATERIAL_CONFLICT_RESOLVE, STEPS.METHOD_WARNING],
+  [STEPS.MATERIAL_CONFLICT_RESOLVE]: [STEPS.METHOD_WARNING],
+  [STEPS.METHOD_WARNING]: [STEPS.AWAITING_SIZE],
+  [STEPS.AWAITING_SIZE]: [STEPS.AWAITING_QUANTITY],
+  [STEPS.AWAITING_QUANTITY]: [STEPS.AWAITING_URGENCY, STEPS.WAITING_SPECIALIST],
+  [STEPS.AWAITING_URGENCY]: [STEPS.AWAITING_DELIVERY],
+  [STEPS.AWAITING_DELIVERY]: [STEPS.ORDER_SUMMARY],
+  [STEPS.ORDER_SUMMARY]: [STEPS.ORDER_CONFIRMED, STEPS.AWAITING_USE_CASE, STEPS.CANCELLED],
+  [STEPS.ORDER_CONFIRMED]: [STEPS.AWAITING_REVIEW],
+  [STEPS.AWAITING_REVIEW]: [STEPS.CANCELLED],
+  [STEPS.WAITING_SPECIALIST]: [STEPS.CANCELLED, STEPS.AWAITING_REVIEW],
+  [STEPS.CANCELLED]: [STEPS.START],
 };
 
 /**
