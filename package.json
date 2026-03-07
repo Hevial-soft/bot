@@ -9,7 +9,6 @@
     "test": "jest --coverage"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
     "pg": "^8.11.3",

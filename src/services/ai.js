@@ -2,7 +2,8 @@ const axios = require('axios');
 const db = require('../db');
 
 const API_KEY = process.env.GEN_API_KEY;
-const API_BASE_URL = 'https://api.gen-api.ru/api/v1';
+const API_POST_URL = 'https://api.gen-api.ru/api/v1';
+const API_GET_URL = 'https://api.gen-api.ru/api/v1/request/get/';
 
 // кэш промптов из БД
 let _promptCache = {};
@@ -93,11 +94,8 @@ async function _callClaudeAPI(useDescription, materials) {
     console.log('[AI] Вызов Claude API с описанием:', useDescription.substring(0, 50));
 
     const response = await axios.post(
-      `${API_BASE_URL}/claude/chat/completions`,
+      `${API_POST_URL}/claude`,
       {
-        model: 'claude-3.5-sonnet',
-        max_tokens: 20,
-        system: systemPrompt,
         messages: [
           {
             role: 'user',
@@ -113,14 +111,24 @@ async function _callClaudeAPI(useDescription, materials) {
       }
     );
 
+    let requestID = response.data?.request_id || 'N/A';
+
+    let getAnswer = await axios
+      .get(`${API_GET_URL}/${requestID}`, {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Accept': 'application/json'
+        },
+      })
+
     console.log('[AI] Ответ от API:', JSON.stringify(response.data).substring(0, 200));
 
-    if (!response.data?.choices?.[0]?.message?.content) {
+    if (!getAnswer.data?.result?.choices?.[0]?.message?.content) {
       console.warn('[AI] Неожиданный формат ответа от API');
       return suggestMaterialLocal(useDescription).code;
     }
 
-    const answer = response.data.choices[0].message.content
+    const answer = getAnswer.data.result.choices[0].message.content
       .trim()
       .toUpperCase()
       .replace(/[^A-Z0-9_]/g, '');
