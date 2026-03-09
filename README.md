@@ -21,7 +21,7 @@ cp .env.example .env
 
 ### 3. Создать базу данных
 ```bash
-psql -U postgres -c "CREATE DATABASE hevial_db;"
+psql -U postgres -c "CREATE DATABASE hevial_db"
 psql -U postgres -d hevial_db -f hevial_full_schema.sql
 ```
 

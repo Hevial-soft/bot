@@ -1,2 +1,2 @@
 // Main entry point
-require('./src');
+require('./src')

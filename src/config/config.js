@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config()
 
 module.exports = {
   bot: {
@@ -15,4 +15,4 @@ module.exports = {
     apiKey: process.env.ANTHROPIC_API_KEY,
   },
   env: process.env.NODE_ENV || 'development',
-};
+}

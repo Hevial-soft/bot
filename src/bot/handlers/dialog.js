@@ -1,11 +1,11 @@
 // Аналог DialogManager.java — центральная машина состояний диалога
 
-const STEPS       = require('../steps');
-const session     = require('../../middleware/session');
-const db          = require('../../db');
-const ai          = require('../../services/ai');
-const pricing     = require('../handlers/pricing');
-const notify      = require('../handlers/notification');
+const STEPS = require('../steps');
+const session = require('../../middleware/session');
+const db = require('../../db');
+const ai = require('../../services/ai');
+const pricing = require('../handlers/pricing');
+const notify = require('../handlers/notification');
 
 // ── Главная точка входа ───────────────────────────────────────────────────
 
@@ -13,7 +13,7 @@ async function handle(ctx) {
   try {
     const userId = ctx.from.id;
     const chatId = ctx.chat.id;
-    const msg    = ctx.message;
+    const msg = ctx.message;
 
     // Получить или создать клиента в БД
     const client = await db.getOrCreateClient(ctx.from);
@@ -25,10 +25,10 @@ async function handle(ctx) {
 
     // Глобальные команды — работают из любого состояния
     const text = msg?.text?.trim() || '';
-    if (text === '/start')      return handleStart(ctx, client);
+    if (text === '/start') return handleStart(ctx, client);
     if (text === '/specialist') return handleTransferToSpecialist(ctx, client);
-    if (text === '/status')     return handleStatus(ctx, client);
-    if (text === '/help')       return handleHelp(ctx);
+    if (text === '/status') return handleStatus(ctx, client);
+    if (text === '/help') return handleHelp(ctx);
 
     // Получить сессию
     const s = session.getOrCreate(userId, chatId);
@@ -104,11 +104,13 @@ async function handleStart(ctx, client) {
     `Что хотите сделать?`,
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [
-        [{ text: '🖨 Оформить заказ',           callback_data: 'action_order' }],
-        [{ text: '🔗 Заказ по ссылке на модель', callback_data: 'action_link'  }],
-        [{ text: '💬 Связаться со специалистом', callback_data: 'action_specialist' }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🖨 Оформить заказ', callback_data: 'action_order' }],
+          [{ text: '🔗 Заказ по ссылке на модель', callback_data: 'action_link' }],
+          [{ text: '💬 Связаться со специалистом', callback_data: 'action_specialist' }],
+        ]
+      }
     }
   );
 }
@@ -139,7 +141,7 @@ async function handleAwaitingFile(ctx, msg, s, client) {
   if (text === 'file_upload' || text === 'file_photo') {
     console.log('[HandleAwaitingFile] Ожидание загрузки файла/фото...');
     session.nextStep(s, STEPS.AWAITING_FILE);
-    const helpMsg = text === 'file_photo' 
+    const helpMsg = text === 'file_photo'
       ? 'Загрузите фото детали (можно несколько) и напишите размеры.'
       : 'Загрузите файл модели (STL, STEP и т.д.)';
     return ctx.reply(helpMsg);
@@ -149,11 +151,13 @@ async function handleAwaitingFile(ctx, msg, s, client) {
     console.log('[HandleAwaitingFile] Повторный запрос файла для заказа');
     session.nextStep(s, STEPS.AWAITING_FILE);
     return ctx.reply('У вас есть файл модели или фото детали?', {
-      reply_markup: { inline_keyboard: [
-        [{ text: '📎 Загрузить файл',         callback_data: 'file_upload' }],
-        [{ text: '📷 Только фото + размеры',   callback_data: 'file_photo'  }],
-        [{ text: '❓ Ничего нет, опишу задачу', callback_data: 'file_none'  }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '📎 Загрузить файл', callback_data: 'file_upload' }],
+          [{ text: '📷 Только фото + размеры', callback_data: 'file_photo' }],
+          [{ text: '❓ Ничего нет, опишу задачу', callback_data: 'file_none' }],
+        ]
+      }
     });
   }
 
@@ -173,11 +177,13 @@ async function handleAwaitingFile(ctx, msg, s, client) {
 
   session.nextStep(s, STEPS.AWAITING_FILE);
   return ctx.reply('У вас есть файл модели или фото детали?', {
-    reply_markup: { inline_keyboard: [
-      [{ text: '📎 Загрузить файл',         callback_data: 'file_upload' }],
-      [{ text: '📷 Только фото + размеры',   callback_data: 'file_photo'  }],
-      [{ text: '❓ Ничего нет, опишу задачу', callback_data: 'file_none'  }],
-    ]}
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '📎 Загрузить файл', callback_data: 'file_upload' }],
+        [{ text: '📷 Только фото + размеры', callback_data: 'file_photo' }],
+        [{ text: '❓ Ничего нет, опишу задачу', callback_data: 'file_none' }],
+      ]
+    }
   });
 }
 
@@ -200,7 +206,7 @@ async function handleAwaitingLink(ctx, msg, s, client) {
 async function handleUseCase(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
   console.log(`[HandleUseCase] Описание использования: "${text.substring(0, 50)}..."`);
-  
+
   if (text.length < 5) {
     console.log('[HandleUseCase] Описание слишком короткое');
     session.incrementRetry(s);
@@ -220,9 +226,9 @@ async function handleUseCase(ctx, msg, s, client) {
 
   // ИИ подбирает
   console.log('[HandleUseCase] Запрос материалов из БД и вызов AI...');
-  const materials  = await db.getAllMaterials();
-  const suggested  = await ai.suggestMaterial(text, materials);
-  const material    = materials.find(m => m.code === suggested);
+  const materials = await db.getAllMaterials();
+  const suggested = await ai.suggestMaterial(text, materials);
+  const material = materials.find(m => m.code === suggested);
   s.suggestedMaterial = suggested;
   console.log(`[HandleUseCase] AI выбрал: ${suggested}`);
   session.nextStep(s, STEPS.MATERIAL_SUGGESTION);
@@ -248,21 +254,23 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
 
   if (text === 'mat_alternatives' || text.includes('🔄') || text.includes('mat_alternatives')) {
     console.log('[MaterialSuggestion] Пользователь запросил альтернативы');
-    const materials    = await db.getAllMaterials();
+    const materials = await db.getAllMaterials();
     const alternatives = materials
       .filter(m => m.code !== s.suggestedMaterial)
       .slice(0, 3);
     const altText = '🔄 *Альтернативные варианты:*\n\n' +
       alternatives.map(m =>
-        `• *${m.display_name}*\n  Применение: ${m.use_cases.slice(0,2).join(', ')}`
+        `• *${m.display_name}*\n  Применение: ${m.use_cases.slice(0, 2).join(', ')}`
       ).join('\n\n');
     return ctx.reply(altText, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [
-        [{ text: '✅ Подходит',               callback_data: 'mat_agree'   }],
-        [{ text: '✏️ Хочу конкретный',        callback_data: 'mat_own'     }],
-        [{ text: '💬 Позвать специалиста',    callback_data: 'action_specialist' }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ Подходит', callback_data: 'mat_agree' }],
+          [{ text: '✏️ Хочу конкретный', callback_data: 'mat_own' }],
+          [{ text: '💬 Позвать специалиста', callback_data: 'action_specialist' }],
+        ]
+      }
     });
   }
 
@@ -280,18 +288,20 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
   console.log(`[MaterialSuggestion] Не распознан callback, повтор ${s.retryCount}`);
   session.incrementRetry(s);
   return ctx.reply('Пожалуйста, выберите один из вариантов:', {
-    reply_markup: { inline_keyboard: [
-      [{ text: '✅ Согласен',         callback_data: 'mat_agree'        }],
-      [{ text: '🔄 Другие варианты', callback_data: 'mat_alternatives' }],
-      [{ text: '✏️ Свой выбор',      callback_data: 'mat_own'          }],
-    ]}
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ Согласен', callback_data: 'mat_agree' }],
+        [{ text: '🔄 Другие варианты', callback_data: 'mat_alternatives' }],
+        [{ text: '✏️ Свой выбор', callback_data: 'mat_own' }],
+      ]
+    }
   });
 }
 
 async function handleMaterialClientChoice(ctx, msg, s, client) {
-  const text     = msg?.text?.trim() || '';
+  const text = msg?.text?.trim() || '';
   console.log(`[MaterialClientChoice] Входящий текст: "${text}"`);
-  
+
   const material = extractMaterial(text);
   if (!material) {
     console.log('[MaterialClientChoice] Материал не распознан');
@@ -325,10 +335,12 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
       `⚠️ *Внимание!*\n\nВы выбрали *${material.display_name}*, но он может не подойти:\n— ${conflicts.join('\n— ')}\n\nРекомендую *${recommended}* для ваших условий.\n\nКак поступим?`,
       {
         parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [
-          [{ text: `🔄 Принять рекомендацию`,           callback_data: 'conflict_accept' }],
-          [{ text: `✅ Оставить ${materialCode}`,        callback_data: 'conflict_keep'   }],
-        ]}
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `🔄 Принять рекомендацию`, callback_data: 'conflict_accept' }],
+            [{ text: `✅ Оставить ${materialCode}`, callback_data: 'conflict_keep' }],
+          ]
+        }
       }
     );
   }
@@ -340,14 +352,14 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
 async function handleMaterialConflict(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
   console.log(`[MaterialConflict] Входящий текст: "${text}"`);
-  
+
   if (text.includes('🔄') || text === 'conflict_accept') {
     console.log('[MaterialConflict] Пользователь согласился с рекомендацией');
     s.confirmedMaterial = s.suggestedMaterial || 'PETG';
     s.materialOverridden = false;
   } else {
     console.log('[MaterialConflict] Пользователь оставил свой выбор');
-    s.confirmedMaterial  = s.clientMaterialWish;
+    s.confirmedMaterial = s.clientMaterialWish;
     s.materialOverridden = true;
   }
   return proceedToMethodWarning(ctx, s);
@@ -358,11 +370,11 @@ async function handleMaterialConflict(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function proceedToMethodWarning(ctx, s) {
-  const method  = s.confirmedMaterial?.startsWith('RESIN') ? 'RESIN' : 'FDM';
+  const method = s.confirmedMaterial?.startsWith('RESIN') ? 'RESIN' : 'FDM';
   s.confirmedMethod = method;
 
   const material = await db.getMaterialByCode(s.confirmedMaterial);
-  const warning  = material?.surface_note || '';
+  const warning = material?.surface_note || '';
 
   let text;
   if (method === 'RESIN') {
@@ -374,23 +386,25 @@ async function proceedToMethodWarning(ctx, s) {
   session.nextStep(s, STEPS.METHOD_WARNING);
   return ctx.reply(text, {
     parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: [
-      [{ text: '✅ Понятно, продолжаем', callback_data: 'method_ok'     }],
-      [{ text: '🔄 Изменить материал',  callback_data: 'method_change' }],
-    ]}
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ Понятно, продолжаем', callback_data: 'method_ok' }],
+        [{ text: '🔄 Изменить материал', callback_data: 'method_change' }],
+      ]
+    }
   });
 }
 
 async function handleMethodWarning(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
   console.log(`[MethodWarning] Входящий текст: "${text}"`);
-  
+
   if (text.includes('🔄') || text === 'method_change') {
     console.log('[MethodWarning] Пользователь хочет изменить материал');
     session.nextStep(s, STEPS.MATERIAL_CLIENT_CHOICE);
     return ctx.reply('Напишите какой материал хотите использовать:');
   }
-  
+
   console.log('[MethodWarning] Переход на размеры');
   session.nextStep(s, STEPS.AWAITING_SIZE);
   return ctx.reply(
@@ -422,17 +436,19 @@ async function handleSize(ctx, msg, s, client) {
   s.sizeX = dims[0]; s.sizeY = dims[1]; s.sizeZ = dims[2];
 
   const maxAllowed = s.confirmedMethod === 'RESIN' ? 218 : 250;
-  const maxDim     = session.getMaxDimension(s);
+  const maxDim = session.getMaxDimension(s);
 
   if (maxDim > maxAllowed) {
     return ctx.reply(
       `⚠️ Деталь *${maxDim} мм* превышает рабочую зону ${s.confirmedMethod} (${maxAllowed} мм).\n\nДля таких размеров нужен расчёт специалиста.`,
       {
         parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [
-          [{ text: '💬 Связаться со специалистом', callback_data: 'action_specialist' }],
-          [{ text: '✏️ Ввести другие размеры',     callback_data: 'size_retry'        }],
-        ]}
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '💬 Связаться со специалистом', callback_data: 'action_specialist' }],
+            [{ text: '✏️ Ввести другие размеры', callback_data: 'size_retry' }],
+          ]
+        }
       }
     );
   }
@@ -460,10 +476,12 @@ async function handleQuantity(ctx, msg, s, client) {
       `📦 Партия *${qty} шт* — рассчитываем индивидуально.\nПодключить специалиста?`,
       {
         parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [
-          [{ text: '✅ Да, соедините со специалистом', callback_data: 'action_specialist' }],
-          [{ text: '📝 Продолжить без расчёта',        callback_data: 'qty_continue'      }],
-        ]}
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '✅ Да, соедините со специалистом', callback_data: 'action_specialist' }],
+            [{ text: '📝 Продолжить без расчёта', callback_data: 'qty_continue' }],
+          ]
+        }
       }
     );
   }
@@ -478,15 +496,17 @@ async function handleQuantity(ctx, msg, s, client) {
 
 async function handleUrgency(ctx, msg, s, client) {
   const text = msg?.text?.trim() || '';
-  s.urgency  = parseUrgency(text);
+  s.urgency = parseUrgency(text);
   session.nextStep(s, STEPS.AWAITING_DELIVERY);
 
   return ctx.reply('🚚 Как хотите получить заказ?', {
-    reply_markup: { inline_keyboard: [
-      [{ text: '🚗 Курьер по Москве (бесплатно)', callback_data: 'delivery_courier' }],
-      [{ text: '📦 СДЭК (рассчитаем отдельно)',   callback_data: 'delivery_sdek'    }],
-      [{ text: '🤝 Самовывоз',                    callback_data: 'delivery_pickup'  }],
-    ]}
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '🚗 Курьер по Москве (бесплатно)', callback_data: 'delivery_courier' }],
+        [{ text: '📦 СДЭК (рассчитаем отдельно)', callback_data: 'delivery_sdek' }],
+        [{ text: '🤝 Самовывоз', callback_data: 'delivery_pickup' }],
+      ]
+    }
   });
 }
 
@@ -502,23 +522,25 @@ async function handleDelivery(ctx, msg, s, client) {
     s.deliveryType = 'COURIER';
   } else if (text.includes('СДЭК') || text === 'delivery_sdek') {
     s.deliveryType = 'SDEK';
-    deliveryNote   = '\n📦 Стоимость СДЭК рассчитаем отдельно после оформления.';
+    deliveryNote = '\n📦 Стоимость СДЭК рассчитаем отдельно после оформления.';
   } else if (text.includes('Самовывоз') || text === 'delivery_pickup') {
     s.deliveryType = 'PICKUP';
-    deliveryNote   = '\n🤝 Место встречи согласуем в чате.';
+    deliveryNote = '\n🤝 Место встречи согласуем в чате.';
   } else {
     return ctx.reply('Выберите способ получения заказа:', {
-      reply_markup: { inline_keyboard: [
-        [{ text: '🚗 Курьер по Москве (бесплатно)', callback_data: 'delivery_courier' }],
-        [{ text: '📦 СДЭК',                         callback_data: 'delivery_sdek'    }],
-        [{ text: '🤝 Самовывоз',                    callback_data: 'delivery_pickup'  }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🚗 Курьер по Москве (бесплатно)', callback_data: 'delivery_courier' }],
+          [{ text: '📦 СДЭК', callback_data: 'delivery_sdek' }],
+          [{ text: '🤝 Самовывоз', callback_data: 'delivery_pickup' }],
+        ]
+      }
     });
   }
 
   // Создаём заказ в БД
   const order = await buildAndSaveOrder(s, client);
-  s.orderId     = order.id;
+  s.orderId = order.id;
   s.orderNumber = order.order_number;
 
   // Привязываем диалог к заказу
@@ -567,11 +589,13 @@ async function handleOrderSummary(ctx, msg, s, client) {
   }
 
   return ctx.reply('Подтвердите или отмените заказ:', {
-    reply_markup: { inline_keyboard: [
-      [{ text: '✅ Подтвердить заказ', callback_data: 'order_confirm' }],
-      [{ text: '✏️ Изменить',         callback_data: 'order_edit'    }],
-      [{ text: '❌ Отменить',          callback_data: 'order_cancel'  }],
-    ]}
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ Подтвердить заказ', callback_data: 'order_confirm' }],
+        [{ text: '✏️ Изменить', callback_data: 'order_edit' }],
+        [{ text: '❌ Отменить', callback_data: 'order_cancel' }],
+      ]
+    }
   });
 }
 
@@ -596,10 +620,12 @@ async function handleReview(ctx, msg, s, client) {
   }
 
   return ctx.reply('Оставьте отзыв или пропустите:', {
-    reply_markup: { inline_keyboard: [
-      [{ text: '⭐ Оставить отзыв', callback_data: 'review_write' }],
-      [{ text: '➡️ Пропустить',    callback_data: 'skip_review'  }],
-    ]}
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '⭐ Оставить отзыв', callback_data: 'review_write' }],
+        [{ text: '➡️ Пропустить', callback_data: 'skip_review' }],
+      ]
+    }
   });
 }
 
@@ -631,12 +657,14 @@ async function handleTransferToSpecialist(ctx, client) {
         `ID: ${ctx.from.id}`,
         {
           parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [
-            [{ text: '💬 Начать диалог', callback_data: `bridge_open_${ctx.chat.id}` }],
-          ]}
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '💬 Начать диалог', callback_data: `bridge_open_${ctx.chat.id}` }],
+            ]
+          }
         }
       );
-    } catch(e) { console.error('Specialist notify error:', e.message); }
+    } catch (e) { console.error('Specialist notify error:', e.message); }
   } else {
     await ctx.reply(
       '💬 Соединяю вас со специалистом.\n\nОпишите задачу — ответим в рабочее время (пн–пт 10:00–19:00 МСК).',
@@ -647,9 +675,9 @@ async function handleTransferToSpecialist(ctx, client) {
 
 async function handleWaitingSpecialist(ctx, msg, s, client) {
   // Пересылаем сообщение специалисту через мост
-  const text     = msg?.text || null;
-  const fileId   = msg?.document?.file_id || (msg?.photo ? msg.photo[msg.photo.length-1].file_id : null);
-  const msgType  = msg?.document ? 'FILE' : msg?.photo ? 'PHOTO' : 'TEXT';
+  const text = msg?.text || null;
+  const fileId = msg?.document?.file_id || (msg?.photo ? msg.photo[msg.photo.length - 1].file_id : null);
+  const msgType = msg?.document ? 'FILE' : msg?.photo ? 'PHOTO' : 'TEXT';
 
   const forwarded = await notify.forwardThroughBridge(ctx.chat.id, text, fileId, msgType);
 
@@ -714,37 +742,41 @@ function askMaterialChoice(ctx, material) {
     `Вы упомянули *${material}*. Это ваш выбор или хотите рекомендацию?`,
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [
-        [{ text: `✅ Да, хочу ${material}`, callback_data: 'mat_keep_own' }],
-        [{ text: '🤖 Подобрать под задачу', callback_data: 'mat_ai'       }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: `✅ Да, хочу ${material}`, callback_data: 'mat_keep_own' }],
+          [{ text: '🤖 Подобрать под задачу', callback_data: 'mat_ai' }],
+        ]
+      }
     }
   );
 }
 
 function buildUrgencyMessage(ctx, s) {
   const baseDays = s.confirmedMethod === 'RESIN' ? 5 : 2;
-  const date     = new Date();
+  const date = new Date();
   date.setDate(date.getDate() + baseDays);
-  const dateStr  = date.toISOString().split('T')[0];
+  const dateStr = date.toISOString().split('T')[0];
 
   return ctx.reply(
     `⏱ *Срочность изготовления*\n\nОриентировочная готовность: *${dateStr}*\n\nВыберите вариант:`,
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [
-        [{ text: '⏱ Стандарт (без наценки)', callback_data: 'urgency_standard' }],
-        [{ text: '🚀 Быстрее +200 ₽',        callback_data: 'urgency_200'      }],
-        [{ text: '⚡ Срочно +500 ₽',          callback_data: 'urgency_500'      }],
-        [{ text: '🔥 Максимум +800 ₽',        callback_data: 'urgency_800'      }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⏱ Стандарт (без наценки)', callback_data: 'urgency_standard' }],
+          [{ text: '🚀 Быстрее +200 ₽', callback_data: 'urgency_200' }],
+          [{ text: '⚡ Срочно +500 ₽', callback_data: 'urgency_500' }],
+          [{ text: '🔥 Максимум +800 ₽', callback_data: 'urgency_800' }],
+        ]
+      }
     }
   );
 }
 
 async function buildOrderSummary(ctx, order, extra = '') {
   const deliveryLabels = { COURIER: '🚗 Курьер (бесплатно)', SDEK: '📦 СДЭК', PICKUP: '🤝 Самовывоз' };
-  const urgencyLabels  = { STANDARD: 'Стандарт', PLUS200: '+200 ₽', PLUS500: '+500 ₽', PLUS800: '+800 ₽' };
+  const urgencyLabels = { STANDARD: 'Стандарт', PLUS200: '+200 ₽', PLUS500: '+500 ₽', PLUS800: '+800 ₽' };
   const price = order.total_price ? `${order.total_price} ₽` : 'рассчитывается';
 
   return ctx.reply(
@@ -759,11 +791,13 @@ async function buildOrderSummary(ctx, order, extra = '') {
     `Подтвердить заказ?`,
     {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [
-        [{ text: '✅ Подтвердить заказ', callback_data: 'order_confirm' }],
-        [{ text: '✏️ Изменить',         callback_data: 'order_edit'    }],
-        [{ text: '❌ Отменить',          callback_data: 'order_cancel'  }],
-      ]}
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ Подтвердить заказ', callback_data: 'order_confirm' }],
+          [{ text: '✏️ Изменить', callback_data: 'order_edit' }],
+          [{ text: '❌ Отменить', callback_data: 'order_cancel' }],
+        ]
+      }
     }
   );
 }
@@ -784,25 +818,25 @@ async function buildAndSaveOrder(s, client) {
   );
 
   await db.updateOrder(order.order_number, {
-    method_code:          s.confirmedMethod,
-    material_code:        s.confirmedMaterial,
+    method_code: s.confirmedMethod,
+    material_code: s.confirmedMaterial,
     client_material_wish: s.clientMaterialWish,
-    material_overridden:  s.materialOverridden,
-    size_x:               s.sizeX,
-    size_y:               s.sizeY,
-    size_z:               s.sizeZ,
-    quantity:             s.quantity,
-    is_batch:             s.isBatch,
-    file_url:             s.fileUrl,
-    photo_url:            s.photoFileId,
-    use_description:      s.useDescription,
-    urgency:              s.urgency,
-    delivery_type:        s.deliveryType,
-    base_price:           base,
-    urgency_fee:          urgencyFee,
-    delivery_fee:         0,
-    total_price:          total,
-    ready_date:           readyDate,
+    material_overridden: s.materialOverridden,
+    size_x: s.sizeX,
+    size_y: s.sizeY,
+    size_z: s.sizeZ,
+    quantity: s.quantity,
+    is_batch: s.isBatch,
+    file_url: s.fileUrl,
+    photo_url: s.photoFileId,
+    use_description: s.useDescription,
+    urgency: s.urgency,
+    delivery_type: s.deliveryType,
+    base_price: base,
+    urgency_fee: urgencyFee,
+    delivery_fee: 0,
+    total_price: total,
+    ready_date: readyDate,
   });
 
   return db.getOrderByNumber(order.order_number);
@@ -812,17 +846,17 @@ async function buildAndSaveOrder(s, client) {
 function extractMaterial(text) {
   if (!text) return null;
   const t = text.toUpperCase().replace(/[^A-ZА-Я0-9_]/g, ' ');
-  if (t.includes('RESIN') || t.includes('ФОТО'))   return 'RESIN_STD';
-  if (t.includes('FLEX'))                           return 'RESIN_FLEX';
-  if (t.includes('PEEK'))                           return 'PEEK';
-  if (t.includes('PETG'))                           return 'PETG';
-  if (t.includes('ABS'))                            return 'ABS';
-  if (t.includes('TPU'))                            return 'TPU';
+  if (t.includes('RESIN') || t.includes('ФОТО')) return 'RESIN_STD';
+  if (t.includes('FLEX')) return 'RESIN_FLEX';
+  if (t.includes('PEEK')) return 'PEEK';
+  if (t.includes('PETG')) return 'PETG';
+  if (t.includes('ABS')) return 'ABS';
+  if (t.includes('TPU')) return 'TPU';
   if (t.includes('NYLON') || t.includes('НЕЙЛОН')) return 'NYLON';
-  if (t.includes('SILK')  || t.includes('ШЕЛК'))   return 'SILK';
-  if (t.includes('SBS'))                            return 'SBS';
-  if (t.includes('PC')    || t.includes('ПОЛИКАРБ'))return 'PC';
-  if (t.includes('PLA')   || t.includes('ПЛА'))     return 'PLA';
+  if (t.includes('SILK') || t.includes('ШЕЛК')) return 'SILK';
+  if (t.includes('SBS')) return 'SBS';
+  if (t.includes('PC') || t.includes('ПОЛИКАРБ')) return 'PC';
+  if (t.includes('PLA') || t.includes('ПЛА')) return 'PLA';
   return null;
 }
 
@@ -834,7 +868,7 @@ function parseDimensions(text) {
       const nums = parts.slice(0, 3).map(p => parseInt(p.replace(/\D/g, '')));
       if (nums.every(n => !isNaN(n) && n > 0)) return nums;
     }
-  } catch {}
+  } catch { }
   return null;
 }
 
@@ -852,19 +886,19 @@ function parseUrgency(text) {
 }
 
 async function saveUserMessage(msg, client, s) {
-  const type   = msg?.document ? 'FILE' : msg?.photo ? 'PHOTO' : 'TEXT';
+  const type = msg?.document ? 'FILE' : msg?.photo ? 'PHOTO' : 'TEXT';
   const fileId = msg?.document?.file_id ||
-                 (msg?.photo ? msg.photo[msg.photo.length-1].file_id : null);
+    (msg?.photo ? msg.photo[msg.photo.length - 1].file_id : null);
   await db.saveDialogMessage({
-    clientId:     client.id,
-    orderId:      s.orderId,
-    orderNumber:  s.orderNumber,
-    sessionId:    s.sessionId,
-    role:         'USER',
-    messageType:  type,
-    messageText:  msg?.text || null,
+    clientId: client.id,
+    orderId: s.orderId,
+    orderNumber: s.orderNumber,
+    sessionId: s.sessionId,
+    role: 'USER',
+    messageType: type,
+    messageText: msg?.text || null,
     fileId,
-    dialogStep:   s.currentStep,
+    dialogStep: s.currentStep,
     telegramMsgId: msg?.message_id,
   });
 }

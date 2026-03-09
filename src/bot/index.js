@@ -1,9 +1,9 @@
 const { Telegraf } = require('telegraf');
-const dialog   = require('./handlers/dialog');
-const notify   = require('./handlers/notification');
-const db       = require('../db');
-const session  = require('../middleware/session');
-const STEPS    = require('./steps');
+const dialog = require('./handlers/dialog');
+const notify = require('./handlers/notification');
+const db = require('../db');
+const session = require('../middleware/session');
+const STEPS = require('./steps');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -17,13 +17,13 @@ bot.use(async (ctx, next) => {
 
   // Если этот chat участвует в активном мосту — пересылаем
   if (notify.isInBridge(chatId)) {
-    const text   = ctx.message?.text || null;
+    const text = ctx.message?.text || null;
     const fileId = ctx.message?.document?.file_id ||
-                   (ctx.message?.photo
-                     ? ctx.message.photo[ctx.message.photo.length - 1].file_id
-                     : null);
-    const type   = ctx.message?.document ? 'FILE'
-                 : ctx.message?.photo    ? 'PHOTO' : 'TEXT';
+      (ctx.message?.photo
+        ? ctx.message.photo[ctx.message.photo.length - 1].file_id
+        : null);
+    const type = ctx.message?.document ? 'FILE'
+      : ctx.message?.photo ? 'PHOTO' : 'TEXT';
 
     // Команды всё равно проходят дальше
     if (text && text.startsWith('/')) return next();
@@ -92,7 +92,7 @@ bot.on('message', async (ctx) => {
 // ── Callback от inline-кнопок ─────────────────────────────────────────────
 bot.on('callback_query', async (ctx) => {
   try {
-    const data   = ctx.callbackQuery.data;
+    const data = ctx.callbackQuery.data;
     const chatId = ctx.chat.id;
     const userId = ctx.from.id;
 
@@ -138,9 +138,9 @@ bot.on('callback_query', async (ctx) => {
 
     if (data.startsWith('bridge_') && data.includes('_')) {
       // bridge_{orderNumber}_{clientChatId}
-      const parts         = data.split('_');
-      const orderNumber   = parts[1];
-      const clientChatId  = parseInt(parts[2]);
+      const parts = data.split('_');
+      const orderNumber = parts[1];
+      const clientChatId = parseInt(parts[2]);
       notify.openBridge(orderNumber, chatId, clientChatId);
       return ctx.reply(`🔗 Диалог по заказу ${orderNumber} открыт. Пишите — клиент получит.`);
     }
@@ -153,9 +153,9 @@ bot.on('callback_query', async (ctx) => {
     }
     ctx.message = {
       ...ctx.message,
-      text:       data,
-      from:       ctx.from,
-      chat:       ctx.chat,
+      text: data,
+      from: ctx.from,
+      chat: ctx.chat,
       message_id: ctx.callbackQuery.message.message_id,
     };
 
@@ -163,7 +163,7 @@ bot.on('callback_query', async (ctx) => {
 
   } catch (err) {
     console.error('Callback error:', err.message);
-    try { await ctx.reply('Ошибка. Попробуйте /start'); } catch {}
+    try { await ctx.reply('Ошибка. Попробуйте /start'); } catch { }
   }
 });
 
