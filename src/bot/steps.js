@@ -33,6 +33,20 @@ const STEPS = {
   
   // ── Служебные ────────────────────────────────────────────────────────────
   CANCELLED: 'CANCELLED',                   // Отменён
+  // ── Ветка 1: ВХОД — выбор типа заказа ─────────────────
+  AWAITING_ORDER_TYPE:      'AWAITING_ORDER_TYPE',   // печать или моделирование?
+
+  // ── Ветка 2: 3D-МОДЕЛИРОВАНИЕ ──────────────────────────
+  MODELING_USE_CASE:        'MODELING_USE_CASE',
+  MODELING_DIMENSIONS:      'MODELING_DIMENSIONS',
+  MODELING_IS_BROKEN:       'MODELING_IS_BROKEN',
+  MODELING_DELIVERY:        'MODELING_DELIVERY',
+  MODELING_URGENCY:         'MODELING_URGENCY',
+  MODELING_SUMMARY:         'MODELING_SUMMARY',
+  MODELING_CONFIRMED:       'MODELING_CONFIRMED',
+
+  // ── (для печати) Анализ STL
+  AWAITING_STL_ANALYSIS:    'AWAITING_STL_ANALYSIS',
 };
 
 /**
