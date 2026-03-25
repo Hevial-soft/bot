@@ -164,7 +164,7 @@ async function handleStart(ctx, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderType(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim();
 
   if (text === "type_print" || text.includes("печат")) {
     await db.updateSession(s.id, {
@@ -173,14 +173,20 @@ async function handleOrderType(ctx, msg, s, client) {
     });
     return ctx.reply(
       "📁 Есть файл модели или фото детали?",
-      btn(
-        [
-          ["📎 Загрузить STL/STEP", "file_upload"],
-          ["📷 Только фото + размеры", "file_photo"],
-          ["❓ Ничего нет, опишу задачу", "file_none"],
-        ],
-        cancelRow(),
-      ),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "📎 Загрузить STL/STEP", callback_data: "file_upload" },
+              { text: "📷 Только фото + размеры", callback_data: "file_photo" },
+            ],
+            [
+              { text: "❓ Ничего нет, опишу задачу", callback_data: "file_none" },
+            ],
+            ...cancelRow(),
+          ],
+        },
+      },
     );
   }
 
@@ -206,7 +212,7 @@ async function handleOrderType(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAwaitingFile(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   // Прислали STL/STEP/документ
   if (msg?.document) {
@@ -241,7 +247,16 @@ async function handleAwaitingFile(ctx, msg, s, client) {
     });
     return ctx.reply(
       "📷 Фото получено!\n\nОпишите деталь и укажите размеры (Д×Ш×В в мм).\nЕсли размеры неизвестны — мы можем сделать 3D-моделирование.",
-      btn([["📐 Нужно моделирование", "need_modeling"]], cancelRow()),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "📐 Нужно моделирование", callback_data: "need_modeling" },
+            ],
+            ...cancelRow(),
+          ],
+        },
+      },
     );
   }
 
@@ -249,16 +264,14 @@ async function handleAwaitingFile(ctx, msg, s, client) {
   if (text === "file_upload") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_FILE });
     return ctx.reply(
-      "📎 Отправьте файл модели (STL, STEP, OBJ, 3MF):",
-      btn([], cancelRow()),
+      "📎 Отправьте файл модели (STL, STEP, OBJ, 3MF):"
     );
   }
 
   if (text === "file_photo") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_FILE });
     return ctx.reply(
-      "📷 Отправьте фото детали (можно несколько) и укажите размеры:",
-      btn([], cancelRow()),
+      "📷 Отправьте фото детали (можно несколько) и укажите размеры:"
     );
   }
 
@@ -278,14 +291,19 @@ async function handleAwaitingFile(ctx, msg, s, client) {
   // Ничего не прислали — повторяем
   return ctx.reply(
     "📁 Есть файл модели или фото детали?",
-    btn(
-      [
-        ["📎 Загрузить STL/STEP", "file_upload"],
-        ["📷 Только фото + размеры", "file_photo"],
-        ["❓ Ничего нет, опишу задачу", "file_none"],
-      ],
-      cancelRow(),
-    ),
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📎 Загрузить STL/STEP", callback_data: "file_upload" },
+            { text: "📷 Только фото + размеры", callback_data: "file_photo" },
+          ],
+          [
+            { text: "❓ Ничего нет, опишу задачу", callback_data: "file_none" },
+          ],
+        ],
+      },
+    },
   );
 }
 
@@ -298,7 +316,7 @@ function askModelingUseCase(ctx) {
     "📐 *Расскажите о детали, которую нужно смоделировать:*\n\n" +
       "Например: _корпус для электроники_, _кронштейн крепления_, _декоративная накладка_\n\n" +
       "Чем подробнее — тем точнее будет модель 🎯",
-    { parse_mode: "Markdown", reply_markup: cancelRow() },
+    { parse_mode: "Markdown"},
   );
 }
 
@@ -318,12 +336,20 @@ async function handleModelingUseCase(ctx, msg, s, client) {
 
   return ctx.reply(
     "📏 *Габариты детали*\n\nЕсли знаете — укажите приблизительные размеры (мм).\nЕсли нет — нажмите «Не знаю».",
-    btn([["❓ Не знаю размеры", "dim_unknown"]], cancelRow()),
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "❓ Не знаю размеры", callback_data: "dim_unknown" },
+          ],
+        ],
+      },
+    },
   );
 }
 
 async function handleModelingDimensions(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   let dimensions = null;
   if (text !== "dim_unknown") {
@@ -333,10 +359,14 @@ async function handleModelingDimensions(ctx, msg, s, client) {
         "Не смог распознать размеры. Напишите три числа через пробел: `50 30 20`\nИли нажмите «Не знаю».",
         {
           parse_mode: "Markdown",
-          reply_markup: btn(
-            [["❓ Не знаю размеры", "dim_unknown"]],
-            cancelRow(),
-          ),
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "❓ Не знаю размеры", callback_data: "dim_unknown" },
+              ],
+              ...cancelRow(),
+            ],
+          },
         },
       );
     }
@@ -352,18 +382,22 @@ async function handleModelingDimensions(ctx, msg, s, client) {
   return ctx.reply(
     "🔧 *Это существующая деталь, которую нужно воссоздать?*\n\n" +
       "Например: сломана деталь, нет чертежей, нужен реверс-инжиниринг.",
-    btn(
-      [
-        ["✅ Да, нужен реверс-инжиниринг", "modeling_reverse"],
-        ["❌ Нет, нужна новая деталь", "modeling_new"],
-      ],
-      cancelRow(),
-    ),
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Да, нужен реверс-инжиниринг", callback_data: "modeling_reverse" },
+            { text: "❌ Нет, нужна новая деталь", callback_data: "modeling_new" },
+          ],
+          ...cancelRow(),
+        ],
+      },
+    },
   );
 }
 
 async function handleModelingIsBroken(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
   const isReverse = text === "modeling_reverse" || text.includes("реверс");
 
   await db.updateSession(s.id, {
@@ -379,19 +413,24 @@ async function handleModelingIsBroken(ctx, msg, s, client) {
     `📦 *Доставка детали*${reverseNote}\n\n` +
       "Для качественного моделирования лучше передать нам деталь.\n" +
       "Как удобно?",
-    btn(
-      [
-        ["📦 Отправлю СДЭК", "delivery_cdek"],
-        ["🚗 Заберите у меня (+300₽, МКАД)", "delivery_pickup"],
-        ["📷 Только по фото/описанию", "delivery_photo"],
-      ],
-      cancelRow(),
-    ),
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "📦 Отправлю СДЭК", callback_data: "delivery_cdek" },
+            { text: "🚗 Заберите у меня (+300₽, МКАД)", callback_data: "delivery_pickup" },
+          ],
+          [
+            { text: "📷 Только по фото/описанию", callback_data: "delivery_photo" },
+          ],
+        ],
+      },
+    },
   );
 }
 
 async function handleModelingDelivery(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   let deliveryType = "PHOTO";
   let deliveryNote = "📷 Будем работать по фото и описанию.";
@@ -416,18 +455,22 @@ async function handleModelingDelivery(ctx, msg, s, client) {
       "⏱ *Выберите срочность моделирования:*\n\n" +
       "• Стандарт: *от 5 дней* (зависит от сложности)\n" +
       "• Срочно: *3–5 дней* (+1 000 ₽)",
-    btn(
-      [
-        ["⏱ Стандарт (от 5 дней)", "modeling_standard"],
-        ["🚀 Срочно (+1 000 ₽)", "modeling_urgent"],
-      ],
-      cancelRow(),
-    ),
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "⏱ Стандарт (от 5 дней)", callback_data: "modeling_standard" },
+            { text: "🚀 Срочно (+1 000 ₽)", callback_data: "modeling_urgent" },
+          ],
+          ...cancelRow(),
+        ],
+      },
+    },
   );
 }
 
 async function handleModelingUrgency(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
   const isUrgent = text === "modeling_urgent";
 
   await db.updateSession(s.id, {
@@ -477,7 +520,7 @@ async function showModelingSummary(ctx, s, client, isUrgent) {
 }
 
 async function handleModelingSummary(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   if (text === "modeling_edit") {
     await db.updateSession(s.id, { currentStep: STEPS.MODELING_USE_CASE });
@@ -533,24 +576,22 @@ function askUseCase(ctx) {
       "_Например: крепёж велосипеда, улица, нагрузка 5кг, 50×30×20 мм_",
     {
       parse_mode: "Markdown",
-      reply_markup: btn(
-        [["💬 Связаться со специалистом", "action_specialist"]],
-        cancelRow(),
-      ),
+      reply_markup: {
+        inline_keyboard: [...cancelRow()],
+      },
     },
   );
 }
 
 async function handleUseCase(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
 
   if (text.length < 5) {
     return ctx.reply(
-      "Расскажите подробнее — где и как будет использоваться деталь?",
-      { reply_markup: cancelRow() },
+      "Расскажите подробнее — где и как будет использоваться деталь?"
     );
   }
 
@@ -596,7 +637,7 @@ async function handleUseCase(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleMaterialSuggestion(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   if (
     text === "mat_agree" ||
@@ -641,8 +682,7 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
   if (text === "mat_own" || text.includes("✏️")) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
     return ctx.reply(
-      "Напишите какой материал хотите (например: PLA, PETG, TPU, смола):",
-      { reply_markup: cancelRow() },
+      "Напишите какой материал хотите (например: PLA, PETG, TPU, смола):"
     );
   }
 
@@ -662,7 +702,7 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
 }
 
 async function handleMaterialClientChoice(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
   const material = extractMaterial(text);
 
   if (!material) {
@@ -676,7 +716,7 @@ async function handleMaterialClientChoice(ctx, msg, s, client) {
     clientMaterialWish: material,
     currentStep: STEPS.MATERIAL_CHECK,
   });
-  return checkMaterialCompatibility(ctx, s, material);
+  return checkMaterialCompatibility(ctx, s, materialCode);
 }
 
 async function checkMaterialCompatibility(ctx, s, materialCode) {
@@ -686,7 +726,7 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
     return ctx.reply(
       `Материал *${materialCode}* не найден в каталоге.\nДоступные: PLA, PETG, ABS, TPU, PEEK, Nylon, PC, SBS, Silk, Resin.`,
-      { parse_mode: "Markdown", reply_markup: cancelRow() },
+      { parse_mode: "Markdown"},
     );
   }
 
@@ -788,13 +828,11 @@ async function proceedToMethodWarning(ctx, s) {
 }
 
 async function handleMethodWarning(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   if (text === "method_change" || text.includes("🔄")) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
-    return ctx.reply("Напишите какой материал хотите:", {
-      reply_markup: cancelRow(),
-    });
+    return ctx.reply("Напишите какой материал хотите:");
   }
 
   // Если есть STL — уже проанализирован, переходим к количеству
@@ -802,23 +840,21 @@ async function handleMethodWarning(ctx, msg, s, client) {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_QUANTITY });
     return ctx.reply(
       `📐 Размеры из файла: *${s.sizeX}×${s.sizeY}×${s.sizeZ} мм*\n\nСколько штук нужно напечатать?`,
-      { parse_mode: "Markdown", reply_markup: cancelRow() },
+      { parse_mode: "Markdown"},
     );
   }
 
   // Если есть размеры из описания — переходим к количеству
   if (s.sizeX && s.sizeY && s.sizeZ) {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_QUANTITY });
-    return ctx.reply("Сколько штук нужно напечатать?", {
-      reply_markup: cancelRow(),
-    });
+    return ctx.reply("Сколько штук нужно напечатать?");
   }
 
   // Нет размеров — просим указать
   await db.updateSession(s.id, { currentStep: STEPS.AWAITING_SIZE });
   return ctx.reply(
     "📐 Укажите размеры детали в мм:\nФормат: *Длина Ширина Высота*\nНапример: `50 30 20`\n\nИли загрузите STL/STEP файл.",
-    { parse_mode: "Markdown", reply_markup: cancelRow() },
+    { parse_mode: "Markdown" },
   );
 }
 
@@ -857,8 +893,7 @@ async function runStlAnalysis(ctx, s, fileId) {
   // Если анализ не удался — просим ввести вручную
   await db.updateSession(s.id, { currentStep: STEPS.AWAITING_SIZE });
   return ctx.reply(
-    "⚠️ Не удалось автоматически определить размеры.\nПожалуйста, укажите вручную (Д×Ш×В в мм):",
-    { reply_markup: cancelRow() },
+    "⚠️ Не удалось автоматически определить размеры.\nПожалуйста, укажите вручную (Д×Ш×В в мм):"
   );
 }
 
@@ -866,9 +901,7 @@ async function handleStlAnalysis(ctx, msg, s, client) {
   // Ждём пока анализ завершится (обычно мгновенно)
   // Если сюда попали — значит что-то пошло не так, просим размеры
   await db.updateSession(s.id, { currentStep: STEPS.AWAITING_SIZE });
-  return ctx.reply("Укажите размеры вручную (Д×Ш×В в мм):", {
-    reply_markup: cancelRow(),
-  });
+  return ctx.reply("Укажите размеры вручную (Д×Ш×В в мм):");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -897,7 +930,7 @@ async function handleSize(ctx, msg, s, client) {
   if (!dims) {
     return ctx.reply(
       "Не смог распознать размеры. Напишите три числа через пробел: `50 30 20`\nИли загрузите STL-файл.",
-      { parse_mode: "Markdown", reply_markup: cancelRow() },
+      { parse_mode: "Markdown"},
     );
   }
 
@@ -933,9 +966,7 @@ async function handleSize(ctx, msg, s, client) {
     sizeZ: z,
     currentStep: STEPS.AWAITING_QUANTITY,
   });
-  return ctx.reply("Сколько штук нужно напечатать?", {
-    reply_markup: cancelRow(),
-  });
+  return ctx.reply("Сколько штук нужно напечатать?");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -943,7 +974,7 @@ async function handleSize(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleQuantity(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
   if (text === "qty_continue") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_URGENCY });
     return buildUrgencyMessage(ctx, s);
@@ -951,9 +982,7 @@ async function handleQuantity(ctx, msg, s, client) {
 
   const qty = parseNumber(text);
   if (!qty || qty < 1) {
-    return ctx.reply("Введите количество цифрой, например: 2", {
-      reply_markup: cancelRow(),
-    });
+    return ctx.reply("Введите количество цифрой, например: 2");
   }
 
   await db.updateSession(s.id, { quantity: qty });
@@ -1002,14 +1031,15 @@ async function handleUrgency(ctx, msg, s, client) {
 
   return ctx.reply(
     "🚚 Как хотите получить заказ?",
-    btn(
-      [
-        ["🚗 Курьер по Москве (бесплатно)", "delivery_courier"],
-        ["📦 СДЭК (рассчитаем отдельно)", "delivery_sdek"],
-        ["🤝 Самовывоз", "delivery_pickup"],
-      ],
-      cancelRow(),
-    ),
+    {
+      reply_markup: btn(
+        [
+          [{ text: "🚗 Курьер по Москве (бесплатно)", callback_data: "delivery_courier" }],
+          [{ text: "📦 СДЭК (рассчитаем отдельно)", callback_data: "delivery_sdek" }],
+          [{ text: "🤝 Самовывоз", callback_data: "delivery_pickup" }],
+        ]
+      ),
+    },
   );
 }
 
@@ -1018,7 +1048,7 @@ async function handleUrgency(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleDelivery(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
   let deliveryType = null;
   let deliveryNote = "";
 
@@ -1034,14 +1064,16 @@ async function handleDelivery(ctx, msg, s, client) {
   } else {
     return ctx.reply(
       "Выберите способ получения:",
-      btn(
-        [
-          ["🚗 Курьер по Москве", "delivery_courier"],
-          ["📦 СДЭК", "delivery_sdek"],
-          ["🤝 Самовывоз", "delivery_pickup"],
-        ],
-        cancelRow(),
-      ),
+      
+      {
+        reply_markup: btn(
+          [
+            [{ text: "🚗 Курьер по Москве", callback_data: "delivery_courier" }],
+            [{ text: "📦 СДЭК", callback_data: "delivery_sdek" }],
+            [{ text: "🤝 Самовывоз", callback_data: "delivery_pickup" }],
+          ]
+        ),
+      },
     );
   }
 
@@ -1067,7 +1099,7 @@ async function handleDelivery(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderSummary(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   if (text === "order_confirm" || text.includes("✅")) {
     const order = await db.confirmOrder(s.orderNumber);
@@ -1125,7 +1157,7 @@ async function handleOrderSummary(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleReview(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text = msg?.text?.trim() || ctx.callback_query?.data;
 
   if (text === "skip_review") {
     if (s.orderNumber) await db.markReviewSent(s.orderNumber);
@@ -1146,10 +1178,12 @@ async function handleReview(ctx, msg, s, client) {
 
   return ctx.reply(
     "Оставьте отзыв:",
-    btn([
-      ["⭐ Оставить отзыв", "review_write"],
-      ["➡️ Пропустить", "skip_review"],
-    ]),
+    {
+      reply_markup: btn([
+        [{ text: "⭐ Оставить отзыв", callback_data: "review_write" }],
+        [{ text: "➡️ Пропустить", callback_data: "skip_review" }],
+      ]),
+    },
   );
 }
 
@@ -1292,15 +1326,17 @@ function buildUrgencyMessage(ctx, s) {
 
   return ctx.reply(
     `⏱ *Срочность изготовления*\n\nОриентировочная готовность: *${dateStr}*`,
-    btn(
-      [
-        ["⏱ Стандарт (без наценки)", "urgency_standard"],
-        ["🚀 Быстрее (+200 ₽)", "urgency_200"],
-        ["⚡ Срочно (+500 ₽)", "urgency_500"],
-        ["🔥 Максимум (+800 ₽)", "urgency_800"],
-      ],
-      cancelRow(),
-    ),
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "⏱ Стандарт (без наценки)", callback_data: "urgency_standard" }],
+          [{ text: "🚀 Быстрее (+200 ₽)", callback_data: "urgency_200" }],
+          [{ text: "⚡ Срочно (+500 ₽)", callback_data: "urgency_500" }],
+          [{ text: "🔥 Максимум (+800 ₽)", callback_data: "urgency_800" }],
+          ...cancelRow(),
+        ],
+      },
+    },
   );
 }
 
@@ -1491,17 +1527,15 @@ function getMaterialDensity(materialCode) {
 }
 
 function cancelRow() {
-  return {
-    inline_keyboard: [
-      [{ text: "❌ Отменить заказ", callback_data: "cmd_cancel" }],
-      [
-        {
-          text: "💬 Связаться со специалистом",
-          callback_data: "action_specialist",
-        },
-      ],
+  return [
+    [{ text: "❌ Отменить заказ", callback_data: "cmd_cancel" }],
+    [
+      {
+        text: "💬 Связаться со специалистом",
+        callback_data: "action_specialist",
+      },
     ],
-  };
+  ];
 }
 
 module.exports = {
