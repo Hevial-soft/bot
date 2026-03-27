@@ -138,23 +138,11 @@ async function handleStart(ctx, client) {
       `Что хотите сделать?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🖨 Заказать 3D-печать", callback_data: "type_print" }],
-          [
-            {
-              text: "📐 Нужно 3D-моделирование",
-              callback_data: "type_modeling",
-            },
-          ],
-          [
-            {
-              text: "💬 Связаться со специалистом",
-              callback_data: "action_specialist",
-            },
-          ],
-        ],
-      },
+      ...btn([
+        ["🖨 Заказать 3D-печать", "type_print"],
+        ["📐 Нужно 3D-моделирование", "type_modeling"],
+        ["💬 Связаться со специалистом", "action_specialist"],
+      ]),
     },
   );
 }
@@ -174,18 +162,12 @@ async function handleOrderType(ctx, msg, s, client) {
     return ctx.reply(
       "📁 Есть файл модели или фото детали?",
       {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "📎 Загрузить STL/STEP", callback_data: "file_upload" },
-              { text: "📷 Только фото + размеры", callback_data: "file_photo" },
-            ],
-            [
-              { text: "❓ Ничего нет, опишу задачу", callback_data: "file_none" },
-            ],
-            ...cancelRow(),
-          ],
-        },
+        ...btn([
+          ["📎 Загрузить STL/STEP", "file_upload"],
+          ["📷 Только фото + размеры", "file_photo"],
+          ["❓ Ничего нет, опишу задачу", "file_none"],
+        ]),
+        ...cancelRow(),
       },
     );
   }
@@ -248,14 +230,10 @@ async function handleAwaitingFile(ctx, msg, s, client) {
     return ctx.reply(
       "📷 Фото получено!\n\nОпишите деталь и укажите размеры (Д×Ш×В в мм).\nЕсли размеры неизвестны — мы можем сделать 3D-моделирование.",
       {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "📐 Нужно моделирование", callback_data: "need_modeling" },
-            ],
-            ...cancelRow(),
-          ],
-        },
+        ...btn([
+          ["📐 Нужно моделирование", "need_modeling"],
+        ]),
+        ...cancelRow(),
       },
     );
   }
@@ -292,17 +270,11 @@ async function handleAwaitingFile(ctx, msg, s, client) {
   return ctx.reply(
     "📁 Есть файл модели или фото детали?",
     {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "📎 Загрузить STL/STEP", callback_data: "file_upload" },
-            { text: "📷 Только фото + размеры", callback_data: "file_photo" },
-          ],
-          [
-            { text: "❓ Ничего нет, опишу задачу", callback_data: "file_none" },
-          ],
-        ],
-      },
+      ...btn([
+        ["📎 Загрузить STL/STEP", "file_upload"],
+        ["📷 Только фото + размеры", "file_photo"],
+        ["❓ Ничего нет, опишу задачу", "file_none"],
+      ]),
     },
   );
 }
@@ -337,13 +309,9 @@ async function handleModelingUseCase(ctx, msg, s, client) {
   return ctx.reply(
     "📏 *Габариты детали*\n\nЕсли знаете — укажите приблизительные размеры (мм).\nЕсли нет — нажмите «Не знаю».",
     {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "❓ Не знаю размеры", callback_data: "dim_unknown" },
-          ],
-        ],
-      },
+      ...btn([
+        ["❓ Не знаю размеры", "dim_unknown"],
+      ]),
     },
   );
 }
@@ -359,14 +327,10 @@ async function handleModelingDimensions(ctx, msg, s, client) {
         "Не смог распознать размеры. Напишите три числа через пробел: `50 30 20`\nИли нажмите «Не знаю».",
         {
           parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "❓ Не знаю размеры", callback_data: "dim_unknown" },
-              ],
-              ...cancelRow(),
-            ],
-          },
+          ...btn([
+            ["❓ Не знаю размеры", "dim_unknown"],
+          ]),
+          ...cancelRow(),
         },
       );
     }
@@ -383,15 +347,11 @@ async function handleModelingDimensions(ctx, msg, s, client) {
     "🔧 *Это существующая деталь, которую нужно воссоздать?*\n\n" +
       "Например: сломана деталь, нет чертежей, нужен реверс-инжиниринг.",
     {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "✅ Да, нужен реверс-инжиниринг", callback_data: "modeling_reverse" },
-            { text: "❌ Нет, нужна новая деталь", callback_data: "modeling_new" },
-          ],
-          ...cancelRow(),
-        ],
-      },
+      ...btn([
+        ["✅ Да, нужен реверс-инжиниринг", "modeling_reverse"],
+        ["❌ Нет, нужна новая деталь", "modeling_new"],
+      ]),
+      ...cancelRow(),
     },
   );
 }
@@ -414,17 +374,11 @@ async function handleModelingIsBroken(ctx, msg, s, client) {
       "Для качественного моделирования лучше передать нам деталь.\n" +
       "Как удобно?",
     {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "📦 Отправлю СДЭК", callback_data: "delivery_cdek" },
-            { text: "🚗 Заберите у меня (+300₽, МКАД)", callback_data: "delivery_pickup" },
-          ],
-          [
-            { text: "📷 Только по фото/описанию", callback_data: "delivery_photo" },
-          ],
-        ],
-      },
+      ...btn([
+        ["📦 Отправлю СДЭК", "delivery_cdek"],
+        ["🚗 Заберите у меня (+300₽, МКАД)", "delivery_pickup"],
+        ["📷 Только по фото/описанию", "delivery_photo"],
+      ]),
     },
   );
 }
@@ -456,15 +410,11 @@ async function handleModelingDelivery(ctx, msg, s, client) {
       "• Стандарт: *от 5 дней* (зависит от сложности)\n" +
       "• Срочно: *3–5 дней* (+1 000 ₽)",
     {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "⏱ Стандарт (от 5 дней)", callback_data: "modeling_standard" },
-            { text: "🚀 Срочно (+1 000 ₽)", callback_data: "modeling_urgent" },
-          ],
-          ...cancelRow(),
-        ],
-      },
+      ...btn([
+        ["⏱ Стандарт (от 5 дней)", "modeling_standard"],
+        ["🚀 Срочно (+1 000 ₽)", "modeling_urgent"],
+      ]),
+      ...cancelRow(),
     },
   );
 }
@@ -508,13 +458,11 @@ async function showModelingSummary(ctx, s, client, isUrgent) {
       `Подтвердить заявку?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Подтвердить", callback_data: "modeling_confirm" }],
-          [{ text: "✏️ Изменить", callback_data: "modeling_edit" }],
-          [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-        ],
-      },
+      ...btn([
+        ["✅ Подтвердить", "modeling_confirm"],
+        ["✏️ Изменить", "modeling_edit"],
+        ["❌ Отменить", "cmd_cancel"],
+      ]),
     },
   );
 }
@@ -663,19 +611,12 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
         .join("\n\n");
     return ctx.reply(altText, {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Подходит", callback_data: "mat_agree" }],
-          [{ text: "✏️ Хочу конкретный", callback_data: "mat_own" }],
-          [
-            {
-              text: "💬 Позвать специалиста",
-              callback_data: "action_specialist",
-            },
-          ],
-          [{ text: "❌ Отменить заказ", callback_data: "cmd_cancel" }],
-        ],
-      },
+      ...btn([
+        ["✅ Подходит", "mat_agree"],
+        ["✏️ Хочу конкретный", "mat_own"],
+        ["💬 Позвать специалиста", "action_specialist"],
+        ["❌ Отменить заказ", "cmd_cancel"],
+      ]),
     });
   }
 
@@ -689,16 +630,16 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
 
-  return ctx.reply("Пожалуйста, выберите один из вариантов:", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "✅ Согласен", callback_data: "mat_agree" }],
-        [{ text: "🔄 Другие варианты", callback_data: "mat_alternatives" }],
-        [{ text: "✏️ Свой выбор", callback_data: "mat_own" }],
-        [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-      ],
+  return ctx.reply("Пожалуйста, выберите один из вариантов:", 
+    {
+      ...btn([
+        ["✅ Согласен", "mat_agree"],
+        ["🔄 Другие варианты", "mat_alternatives"],
+        ["✏️ Свой выбор", "mat_own"],
+        ["❌ Отменить", "cmd_cancel"],
+      ]),
     },
-  });
+  );
 }
 
 async function handleMaterialClientChoice(ctx, msg, s, client) {
@@ -726,7 +667,7 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
     return ctx.reply(
       `Материал *${materialCode}* не найден в каталоге.\nДоступные: PLA, PETG, ABS, TPU, PEEK, Nylon, PC, SBS, Silk, Resin.`,
-      { parse_mode: "Markdown"},
+      { parse_mode: "Markdown" },
     );
   }
 
@@ -746,23 +687,11 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
         `Рекомендую *${recommended}* для ваших условий.\n\nКак поступим?`,
       {
         parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: `🔄 Принять рекомендацию (${recommended})`,
-                callback_data: "conflict_accept",
-              },
-            ],
-            [
-              {
-                text: `✅ Оставить ${materialCode}`,
-                callback_data: "conflict_keep",
-              },
-            ],
-            [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-          ],
-        },
+        ...btn([
+          [`🔄 Принять рекомендацию (${recommended})`, "conflict_accept"],
+          [`✅ Оставить ${materialCode}`, "conflict_keep"],
+          ["❌ Отменить", "cmd_cancel"],
+        ]),
       },
     );
   }
@@ -817,13 +746,11 @@ async function proceedToMethodWarning(ctx, s) {
 
   return ctx.reply(text + "\n\nПродолжаем?", {
     parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "✅ Понятно, продолжаем", callback_data: "method_ok" }],
-        [{ text: "🔄 Изменить материал", callback_data: "method_change" }],
-        [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-      ],
-    },
+    ...btn([
+      ["✅ Понятно, продолжаем", "method_ok"],
+      ["🔄 Изменить материал", "method_change"],
+      ["❌ Отменить", "cmd_cancel"],
+    ]),
   });
 }
 
@@ -944,18 +871,11 @@ async function handleSize(ctx, msg, s, client) {
         `Для таких размеров нужен расчёт специалиста.`,
       {
         parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "💬 Связаться со специалистом",
-                callback_data: "action_specialist",
-              },
-            ],
-            [{ text: "✏️ Ввести другие размеры", callback_data: "size_retry" }],
-            [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-          ],
-        },
+        ...btn([
+          ["💬 Связаться со специалистом", "action_specialist"],
+          ["✏️ Ввести другие размеры", "size_retry"],
+          ["❌ Отменить", "cmd_cancel"],
+        ]),
       },
     );
   }
@@ -992,23 +912,11 @@ async function handleQuantity(ctx, msg, s, client) {
       `📦 Партия *${qty} шт* — рассчитываем индивидуально.\nПодключить специалиста?`,
       {
         parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "✅ Да, соедините со специалистом",
-                callback_data: "action_specialist",
-              },
-            ],
-            [
-              {
-                text: "📝 Продолжить без расчёта",
-                callback_data: "qty_continue",
-              },
-            ],
-            [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-          ],
-        },
+        ...btn([
+          ["✅ Да, соедините со специалистом", "action_specialist"],
+          ["📝 Продолжить без расчёта", "qty_continue"],
+          ["❌ Отменить", "cmd_cancel"],
+        ]),
       },
     );
   }
@@ -1032,11 +940,12 @@ async function handleUrgency(ctx, msg, s, client) {
   return ctx.reply(
     "🚚 Как хотите получить заказ?",
     {
-      reply_markup: btn(
+      parse_mode: "Markdown",
+      ...btn(
         [
-          [{ text: "🚗 Курьер по Москве (бесплатно)", callback_data: "delivery_courier" }],
-          [{ text: "📦 СДЭК (рассчитаем отдельно)", callback_data: "delivery_sdek" }],
-          [{ text: "🤝 Самовывоз", callback_data: "delivery_pickup" }],
+          ["🚗 Курьер по Москве (бесплатно)", "delivery_courier"],
+          ["📦 СДЭК (рассчитаем отдельно)", "delivery_sdek"],
+          ["🤝 Самовывоз", "delivery_pickup"],
         ]
       ),
     },
@@ -1066,11 +975,12 @@ async function handleDelivery(ctx, msg, s, client) {
       "Выберите способ получения:",
       
       {
-        reply_markup: btn(
+        parse_mode: "Markdown",
+        ...btn(
           [
-            [{ text: "🚗 Курьер по Москве", callback_data: "delivery_courier" }],
-            [{ text: "📦 СДЭК", callback_data: "delivery_sdek" }],
-            [{ text: "🤝 Самовывоз", callback_data: "delivery_pickup" }],
+            ["🚗 Курьер по Москве", "delivery_courier"],
+            ["📦 СДЭК", "delivery_sdek"],
+            ["🤝 Самовывоз", "delivery_pickup"],
           ]
         ),
       },
@@ -1141,15 +1051,16 @@ async function handleOrderSummary(ctx, msg, s, client) {
     );
   }
 
-  return ctx.reply("Подтвердите или отмените заказ:", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "✅ Подтвердить", callback_data: "order_confirm" }],
-        [{ text: "✏️ Изменить", callback_data: "order_edit" }],
-        [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-      ],
-    },
-  });
+  return ctx.reply("Подтвердите или отмените заказ:", 
+    {
+      parse_mode: "Markdown",
+      ...btn([
+        ["✅ Подтвердить", "order_confirm"],
+        ["✏️ Изменить", "order_edit"],
+        ["❌ Отменить", "cmd_cancel"],
+      ]),
+    }
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1179,9 +1090,10 @@ async function handleReview(ctx, msg, s, client) {
   return ctx.reply(
     "Оставьте отзыв:",
     {
-      reply_markup: btn([
-        [{ text: "⭐ Оставить отзыв", callback_data: "review_write" }],
-        [{ text: "➡️ Пропустить", callback_data: "skip_review" }],
+      parse_mode: "Markdown",
+      ...btn([
+        ["⭐ Оставить отзыв", "review_write"],
+        ["➡️ Пропустить", "skip_review"],
       ]),
     },
   );
@@ -1307,13 +1219,11 @@ function askMaterialChoice(ctx, material) {
     `Вы упомянули *${material}*. Это ваш выбор или хотите рекомендацию от ИИ?`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: `✅ Да, хочу ${material}`, callback_data: "mat_keep_own" }],
-          [{ text: "🤖 Подобрать под задачу", callback_data: "mat_ai" }],
-          [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-        ],
-      },
+      ...btn([
+        ["✅ Да, хочу ${material}", "mat_keep_own"],
+        ["🤖 Подобрать под задачу", "mat_ai"],
+        ["❌ Отменить", "cmd_cancel"],
+      ]),
     },
   );
 }
@@ -1327,15 +1237,14 @@ function buildUrgencyMessage(ctx, s) {
   return ctx.reply(
     `⏱ *Срочность изготовления*\n\nОриентировочная готовность: *${dateStr}*`,
     {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "⏱ Стандарт (без наценки)", callback_data: "urgency_standard" }],
-          [{ text: "🚀 Быстрее (+200 ₽)", callback_data: "urgency_200" }],
-          [{ text: "⚡ Срочно (+500 ₽)", callback_data: "urgency_500" }],
-          [{ text: "🔥 Максимум (+800 ₽)", callback_data: "urgency_800" }],
-          ...cancelRow(),
-        ],
-      },
+      parse_mode: "Markdown",
+      ...btn([
+        ["⏱ Стандарт (без наценки)", "urgency_standard"],
+        ["🚀 Быстрее (+200 ₽)", "urgency_200"],
+        ["⚡ Срочно (+500 ₽)", "urgency_500"],
+        ["🔥 Максимум (+800 ₽)", "urgency_800"],
+        ...cancelRow(),
+      ]),
     },
   );
 }
@@ -1369,13 +1278,11 @@ async function buildOrderSummary(ctx, order, extra = "") {
       `Всё верно? Подтвердите заказ.`,
     {
       parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Подтвердить заказ", callback_data: "order_confirm" }],
-          [{ text: "✏️ Изменить данные", callback_data: "order_edit" }],
-          [{ text: "❌ Отменить", callback_data: "cmd_cancel" }],
-        ],
-      },
+      ...btn([
+        ["✅ Подтвердить заказ", "order_confirm"],
+        ["✏️ Изменить данные", "order_edit"],
+        ["❌ Отменить", "cmd_cancel"],
+      ]),
     },
   );
 }

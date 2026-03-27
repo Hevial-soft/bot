@@ -12,6 +12,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 registerCallbacks(bot);
 registerSpecialistCommands(bot);
+notify.setBotInstance(bot)
 
 // ── Middleware: логгер ────────────────────────────────────────────────────
 bot.use(require("../middleware/logger"));

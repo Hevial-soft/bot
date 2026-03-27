@@ -288,6 +288,39 @@ async function getDialogByOrder(orderNumber) {
   return r.rows;
 }
 
+async function getRecentMessages(sessionId, limit = 10, orderNumber = null) {
+  if (!sessionId && !orderNumber) {
+    throw new Error("sessionId or orderNumber is required");
+  }
+
+  const conditions = [];
+  const values = [];
+  let idx = 1;
+
+  if (sessionId) {
+    conditions.push(`session_id = $${idx++}`);
+    values.push(sessionId);
+  }
+
+  if (orderNumber) {
+    conditions.push(`order_number = $${idx++}`);
+    values.push(orderNumber);
+  }
+
+  values.push(limit);
+
+  const r = await pool.query(
+    `SELECT *
+     FROM dialog_message
+     WHERE ${conditions.join(" AND ")}
+     ORDER BY created_at DESC
+     LIMIT $${idx}`,
+    values
+  );
+
+  return r.rows.reverse();
+}
+
 // ── Промпты ───────────────────────────────────────────────────────────────
 
 async function getAiPrompt(key) {
@@ -729,6 +762,7 @@ module.exports = {
   saveDialogMessage,
   linkSessionToOrder,
   getDialogByOrder,
+  getRecentMessages,
   // Промпты
   getAiPrompt,
   // Специалисты
