@@ -194,7 +194,7 @@ async function handleOrderType(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAwaitingFile(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   // Прислали STL/STEP/документ
   if (msg?.document) {
@@ -317,7 +317,7 @@ async function handleModelingUseCase(ctx, msg, s, client) {
 }
 
 async function handleModelingDimensions(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   let dimensions = null;
   if (text !== "dim_unknown") {
@@ -357,7 +357,7 @@ async function handleModelingDimensions(ctx, msg, s, client) {
 }
 
 async function handleModelingIsBroken(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
   const isReverse = text === "modeling_reverse" || text.includes("реверс");
 
   await db.updateSession(s.id, {
@@ -384,7 +384,7 @@ async function handleModelingIsBroken(ctx, msg, s, client) {
 }
 
 async function handleModelingDelivery(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   let deliveryType = "PHOTO";
   let deliveryNote = "📷 Будем работать по фото и описанию.";
@@ -420,7 +420,7 @@ async function handleModelingDelivery(ctx, msg, s, client) {
 }
 
 async function handleModelingUrgency(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
   const isUrgent = text === "modeling_urgent";
 
   await db.updateSession(s.id, {
@@ -468,7 +468,7 @@ async function showModelingSummary(ctx, s, client, isUrgent) {
 }
 
 async function handleModelingSummary(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "modeling_edit") {
     await db.updateSession(s.id, { currentStep: STEPS.MODELING_USE_CASE });
@@ -532,7 +532,7 @@ function askUseCase(ctx) {
 }
 
 async function handleUseCase(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
@@ -585,15 +585,17 @@ async function handleUseCase(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleMaterialSuggestion(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   if (
     text === "mat_agree" ||
     text.toLowerCase().includes("согла") ||
     text.includes("✅")
   ) {
-    await db.updateSession(s.id, { confirmedMaterial: s.suggestedMaterial });
-    return proceedToMethodWarning(ctx, s);
+    const confirmed = s.suggestedMaterial;
+    await db.updateSession(s.id, { confirmedMaterial: confirmed });
+    s.confirmedMaterial = confirmed; // обновляем объект в памяти
+    return proceedToMethodWarning(ctx, s); // передаем уже обновленный объект
   }
 
   if (text === "mat_alternatives" || text.includes("🔄")) {
@@ -719,6 +721,11 @@ async function handleMaterialConflict(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function proceedToMethodWarning(ctx, s) {
+  if (!s.confirmedMaterial) {
+    console.error("❌ confirmedMaterial is NULL", s);
+    return ctx.reply("Ошибка: материал не определён. Попробуйте ещё раз /start");
+  }
+  
   const method = (s.confirmedMaterial || "").startsWith("RESIN")
     ? "RESIN"
     : "FDM";
@@ -756,7 +763,7 @@ async function proceedToMethodWarning(ctx, s) {
 }
 
 async function handleMethodWarning(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "method_change" || text.includes("🔄")) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
@@ -895,7 +902,7 @@ async function handleSize(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleQuantity(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
   if (text === "qty_continue") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_URGENCY });
     return buildUrgencyMessage(ctx, s);
@@ -958,7 +965,7 @@ async function handleUrgency(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleDelivery(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
   let deliveryType = null;
   let deliveryNote = "";
 
@@ -1010,7 +1017,7 @@ async function handleDelivery(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderSummary(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "order_confirm" || text.includes("✅")) {
     const order = await db.confirmOrder(s.orderNumber);
@@ -1069,7 +1076,7 @@ async function handleOrderSummary(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleReview(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "skip_review") {
     if (s.orderNumber) await db.markReviewSent(s.orderNumber);
@@ -1244,8 +1251,8 @@ function buildUrgencyMessage(ctx, s) {
         ["🚀 Быстрее (+200 ₽)", "urgency_200"],
         ["⚡ Срочно (+500 ₽)", "urgency_500"],
         ["🔥 Максимум (+800 ₽)", "urgency_800"],
-        ...cancelRow(),
       ]),
+      ...cancelRow(),
     },
   );
 }
@@ -1370,7 +1377,7 @@ async function saveUserMessage(msg, client, s) {
 // ─── Парсеры ─────────────────────────────────────────────────────────────
 
 function extractMaterial(text) {
-  if (!text) return null;
+  if (typeof text !== "string" || !text.trim()) return null;
 
   const t = text.toUpperCase().replace(/[^A-ZА-Я0-9_]/g, " ");
 
@@ -1418,12 +1425,11 @@ function parseDimensions(text) {
 function normalizeMaterial(input) {
   if (!input) return null;
 
-  // ✅ если пришёл объект от AI
   if (typeof input === "object") {
     input = input.CODE || input.code;
   }
 
-  if (!input) return null;
+  if (!input || typeof input !== "string") return null;
 
   const map = {
     RESIN: "RESIN_STD",
@@ -1457,7 +1463,7 @@ function parseUrgency(text) {
 
 // Принимает массив пар [text, callback] и опциональный доп.ряд
 function btn(rows, extra = null) {
-  const keyboard = rows.map(([text, cb]) => [{ text, callback_data: cb }]);
+  const keyboard = rows.map(([text, cb]) => [{ text: String(text), callback_data: String(cb) }]);
   if (extra) {
     if (Array.isArray(extra.inline_keyboard)) {
       extra.inline_keyboard.forEach((row) => keyboard.push(row));
