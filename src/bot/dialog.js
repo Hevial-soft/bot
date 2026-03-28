@@ -525,7 +525,7 @@ function askUseCase(ctx) {
     {
       parse_mode: "Markdown",
       reply_markup: {
-        inline_keyboard: [...cancelRow()],
+        inline_keyboard: cancelRow(),
       },
     },
   );
@@ -568,8 +568,9 @@ async function handleUseCase(ctx, msg, s, client) {
   // ИИ подбирает
   await ctx.sendChatAction("typing");
   const materials = await db.getAllMaterials();
-  const suggested = await ai.suggestMaterial(text, materials);
-  const material = materials.find((m) => m.code === suggested);
+  const suggestedRaw = await ai.suggestMaterial(text, materials);
+  const suggested = normalizeMaterial(suggestedRaw);
+  const material = materials.find((m) => normalizeMaterial(m.code) === suggested);
 
   await db.updateSession(s.id, {
     suggestedMaterial: normalizeMaterial(suggested),
@@ -651,7 +652,7 @@ async function handleMaterialClientChoice(ctx, msg, s, client) {
   if (!material) {
     return ctx.reply(
       "Не распознал материал. Напишите: PLA, PETG, ABS, TPU, PEEK, нейлон, смола.",
-      { reply_markup: cancelRow() },
+      { reply_markup: { inline_keyboard: cancelRow() } },
     );
   }
 
@@ -938,7 +939,10 @@ async function handleQuantity(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleUrgency(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || "";
+  const text =
+    msg?.text?.trim() ||
+    ctx.callbackQuery?.data?.trim() ||
+    "";
   const urgency = parseUrgency(text);
   await db.updateSession(s.id, {
     urgency,

@@ -229,7 +229,7 @@ function formatSuggestion(result, material) {
   }
 
   text += `🤖 *Рекомендация: ${material?.display_name || code}*\n\n`;
-  text += `${material?.description || ""}\n\n`;
+  text += `${material?.description || ""}`;
 
   if (stockIssue && !originalCode) {
     // Нет ни этого ни альтернатив
