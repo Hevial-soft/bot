@@ -194,7 +194,7 @@ async function handleOrderType(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAwaitingFile(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   // Прислали STL/STEP/документ
   if (msg?.document) {
@@ -317,7 +317,7 @@ async function handleModelingUseCase(ctx, msg, s, client) {
 }
 
 async function handleModelingDimensions(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   let dimensions = null;
   if (text !== "dim_unknown") {
@@ -357,7 +357,7 @@ async function handleModelingDimensions(ctx, msg, s, client) {
 }
 
 async function handleModelingIsBroken(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
   const isReverse = text === "modeling_reverse" || text.includes("реверс");
 
   await db.updateSession(s.id, {
@@ -384,7 +384,7 @@ async function handleModelingIsBroken(ctx, msg, s, client) {
 }
 
 async function handleModelingDelivery(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   let deliveryType = "PHOTO";
   let deliveryNote = "📷 Будем работать по фото и описанию.";
@@ -420,7 +420,7 @@ async function handleModelingDelivery(ctx, msg, s, client) {
 }
 
 async function handleModelingUrgency(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
   const isUrgent = text === "modeling_urgent";
 
   await db.updateSession(s.id, {
@@ -468,7 +468,7 @@ async function showModelingSummary(ctx, s, client, isUrgent) {
 }
 
 async function handleModelingSummary(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   if (text === "modeling_edit") {
     await db.updateSession(s.id, { currentStep: STEPS.MODELING_USE_CASE });
@@ -532,7 +532,7 @@ function askUseCase(ctx) {
 }
 
 async function handleUseCase(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
@@ -572,7 +572,7 @@ async function handleUseCase(ctx, msg, s, client) {
   const material = materials.find((m) => m.code === suggested);
 
   await db.updateSession(s.id, {
-    suggestedMaterial: suggested,
+    suggestedMaterial: normalizeMaterial(suggested),
     currentStep: STEPS.MATERIAL_SUGGESTION,
   });
 
@@ -585,7 +585,7 @@ async function handleUseCase(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleMaterialSuggestion(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   if (
     text === "mat_agree" ||
@@ -643,9 +643,9 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
 }
 
 async function handleMaterialClientChoice(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data || "";
   const material = extractMaterial(text);
-
+  
   if (!material) {
     return ctx.reply(
       "Не распознал материал. Напишите: PLA, PETG, ABS, TPU, PEEK, нейлон, смола.",
@@ -654,13 +654,14 @@ async function handleMaterialClientChoice(ctx, msg, s, client) {
   }
 
   await db.updateSession(s.id, {
-    clientMaterialWish: material,
+    clientMaterialWish: normalizeMaterial(material),
     currentStep: STEPS.MATERIAL_CHECK,
   });
-  return checkMaterialCompatibility(ctx, s, materialCode);
+  return checkMaterialCompatibility(ctx, s, material);
 }
 
 async function checkMaterialCompatibility(ctx, s, materialCode) {
+  materialCode = normalizeMaterial(materialCode);
   const material = await db.getMaterialByCode(materialCode);
 
   if (!material) {
@@ -703,9 +704,9 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
 async function handleMaterialConflict(ctx, msg, s, client) {
   const text = msg?.text?.trim() || "";
   const accept = text === "conflict_accept" || text.includes("🔄");
-  const confirmed = accept
-    ? s.suggestedMaterial || "PETG"
-    : s.clientMaterialWish;
+  const confirmed = normalizeMaterial(
+    accept ? (s.suggestedMaterial || "PETG") : s.clientMaterialWish
+  );
   await db.updateSession(s.id, {
     confirmedMaterial: confirmed,
     materialOverridden: !accept,
@@ -755,7 +756,7 @@ async function proceedToMethodWarning(ctx, s) {
 }
 
 async function handleMethodWarning(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   if (text === "method_change" || text.includes("🔄")) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
@@ -894,13 +895,13 @@ async function handleSize(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleQuantity(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
   if (text === "qty_continue") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_URGENCY });
     return buildUrgencyMessage(ctx, s);
   }
 
-  const qty = parseNumber(text);
+  const qty = +text;
   if (!qty || qty < 1) {
     return ctx.reply("Введите количество цифрой, например: 2");
   }
@@ -957,7 +958,7 @@ async function handleUrgency(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleDelivery(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
   let deliveryType = null;
   let deliveryNote = "";
 
@@ -1009,7 +1010,7 @@ async function handleDelivery(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderSummary(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   if (text === "order_confirm" || text.includes("✅")) {
     const order = await db.confirmOrder(s.orderNumber);
@@ -1068,7 +1069,7 @@ async function handleOrderSummary(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleReview(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callback_query?.data;
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data;
 
   if (text === "skip_review") {
     if (s.orderNumber) await db.markReviewSent(s.orderNumber);
@@ -1220,7 +1221,7 @@ function askMaterialChoice(ctx, material) {
     {
       parse_mode: "Markdown",
       ...btn([
-        ["✅ Да, хочу ${material}", "mat_keep_own"],
+        [`✅ Да, хочу ${material}`, "mat_keep_own"],
         ["🤖 Подобрать под задачу", "mat_ai"],
         ["❌ Отменить", "cmd_cancel"],
       ]),
@@ -1288,6 +1289,22 @@ async function buildOrderSummary(ctx, order, extra = "") {
 }
 
 async function buildAndSaveOrder(s, client) {
+  // ✅ ЖЁСТКАЯ ВАЛИДАЦИЯ МАТЕРИАЛА
+  const normalizedMaterial = normalizeMaterial(s.confirmedMaterial);
+  
+  console.log("🧱 RAW MATERIAL:", s.confirmedMaterial);
+  console.log("🧱 NORMALIZED:", normalizedMaterial);
+  
+  const materialExists = await db.getMaterialByCode(normalizedMaterial);
+  
+  if (!materialExists) {
+    console.error("❌ INVALID MATERIAL:", normalizedMaterial);
+  
+    throw new Error(
+      `Material ${normalizedMaterial} does not exist in DB`
+    );
+  }
+  
   const order = await db.createOrderDraft(client.id);
   const material = await db.getMaterialByCode(s.confirmedMaterial);
 
@@ -1307,7 +1324,7 @@ async function buildAndSaveOrder(s, client) {
 
   await db.updateOrder(order.order_number, {
     method_code: s.confirmedMethod,
-    material_code: s.confirmedMaterial,
+    material_code: normalizedMaterial,
     client_material_wish: s.clientMaterialWish,
     material_overridden: s.materialOverridden,
     size_x: s.sizeX,
@@ -1354,19 +1371,31 @@ async function saveUserMessage(msg, client, s) {
 
 function extractMaterial(text) {
   if (!text) return null;
+
   const t = text.toUpperCase().replace(/[^A-ZА-Я0-9_]/g, " ");
-  if (t.includes("RESIN") || t.includes("ФОТО")) return "RESIN_STD";
+
+  if (t.includes("RESIN") || t.includes("СМОЛ") || t.includes("ФОТО"))
+    return "RESIN_STD";
+
   if (t.includes("FLEX")) return "RESIN_FLEX";
   if (t.includes("PEEK")) return "PEEK";
   if (t.includes("PETG")) return "PETG";
   if (t.includes("ABS")) return "ABS";
   if (t.includes("TPU")) return "TPU";
+
   if (t.includes("NYLON") || t.includes("НЕЙЛОН") || t.includes("PA"))
     return "NYLON";
-  if (t.includes("SILK") || t.includes("ШЕЛК")) return "SILK";
+
+  if (t.includes("SILK") || t.includes("ШЕЛК"))
+    return "SILK";
+
   if (t.includes("SBS")) return "SBS";
-  if (t.includes("PC") || t.includes("ПОЛИКАРБ")) return "PC";
-  if (t.includes("PLA") || t.includes("ПЛА")) return "PLA";
+  if (t.includes("PC") || t.includes("ПОЛИКАРБ"))
+    return "PC";
+
+  if (t.includes("PLA") || t.includes("ПЛА"))
+    return "PLA";
+
   return null;
 }
 
@@ -1384,6 +1413,30 @@ function parseDimensions(text) {
     }
   } catch {}
   return null;
+}
+
+function normalizeMaterial(input) {
+  if (!input) return null;
+
+  // ✅ если пришёл объект от AI
+  if (typeof input === "object") {
+    input = input.CODE || input.code;
+  }
+
+  if (!input) return null;
+
+  const map = {
+    RESIN: "RESIN_STD",
+    RESINSTD: "RESIN_STD",
+    RESINFLEX: "RESIN_FLEX",
+    FLEX: "RESIN_FLEX",
+    PA: "NYLON",
+    PET: "PETG",
+  };
+
+  const cleaned = String(input).toUpperCase().trim();
+
+  return map[cleaned] || cleaned;
 }
 
 function parseNumber(text) {
