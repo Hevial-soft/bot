@@ -1513,4 +1513,5 @@ module.exports = {
   handleStart,
   handleTransferToSpecialist,
   handleStatus,
+  handleCancel,
 };

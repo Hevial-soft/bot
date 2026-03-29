@@ -655,7 +655,7 @@ async function getActiveOrders(limit = 20) {
      FROM orders o
      LEFT JOIN clients c ON o.client_id = c.id
      WHERE o.status NOT IN ('CANCELLED','CLOSED','DELIVERED')
-       AND o.deleted_at IS NULL
+       AND o.delivered_at IS NULL
      ORDER BY o.created_at DESC
      LIMIT $1`,
     [limit],

@@ -57,13 +57,29 @@ async function notifyNewOrder(order, client) {
     `📝 Задача: _${order.use_description || 'не указана'}_`;
 
   try {
+    // 1️⃣ Отправляем файл заказа (если есть)
+    if (order.file_url?.startsWith('tg_file:')) {
+      const fileId = order.file_url.replace('tg_file:', '');
+      await _bot.telegram.sendDocument(groupId, fileId, {
+        caption: `📎 Файл заказа ${order.order_number}`,
+      });
+    }
+
+    // 2️⃣ Отправляем фото (если есть)
+    if (order.photo_url) {
+      await _bot.telegram.sendPhoto(groupId, order.photo_url, {
+        caption: `📷 Фото заказа ${order.order_number}`,
+      });
+    }
+
+    // 3️⃣ Отправляем карточку заказа
     await _bot.telegram.sendMessage(groupId, text, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '✅ Принять заказ',    callback_data: `accept_${order.order_number}` }],
+          [{ text: '✅ Принять заказ', callback_data: `accept_${order.order_number}` }],
           [{ text: '💬 Написать клиенту', callback_data: `bridge_open_${order.order_number}_${client.telegram_user_id}` }],
-          [{ text: '❌ Отклонить',        callback_data: `reject_${order.order_number}` }],
+          [{ text: '❌ Отклонить', callback_data: `reject_${order.order_number}` }],
         ]
       }
     });
@@ -119,6 +135,15 @@ async function notifyModelingOrder(order, client, fromUser) {
     if (order.photo_id) {
       await _bot.telegram.sendPhoto(groupId, order.photo_id, {
         caption: `📷 Фото детали — заявка ${order.order_number}`,
+      });
+    }
+    
+    // 📎 Файл (если есть)
+    if (order.file_url?.startsWith('tg_file:')) {
+      const fileId = order.file_url.replace('tg_file:', '');
+    
+      await _bot.telegram.sendDocument(groupId, fileId, {
+        caption: `📎 Файл моделирования ${order.order_number}`,
       });
     }
 
