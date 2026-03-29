@@ -1244,7 +1244,12 @@ function buildUrgencyMessage(ctx, s) {
   const baseDays = s.confirmedMethod === "RESIN" ? 5 : 2;
   const date = new Date();
   date.setDate(date.getDate() + baseDays);
-  const dateStr = date.toLocaleDateString("ru-RU");
+
+  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  let dateStr = date.toLocaleDateString('ru-RU', options);
+
+  // Сделать первую букву заглавной
+  dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
   return ctx.reply(
     `⏱ *Срочность изготовления*\n\nОриентировочная готовность: *${dateStr}*`,
@@ -1276,6 +1281,15 @@ async function buildOrderSummary(ctx, order, extra = "") {
   const price = order.total_price
     ? `${order.total_price} ₽`
     : "рассчитывается специалистом";
+  
+  // Преобразуем дату готовности
+  let readyDateStr = "уточняется"; // по умолчанию
+  if (order.ready_date) {
+    const readyDate = new Date(order.ready_date); // создаём объект Date
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }; // формат
+    readyDateStr = readyDate.toLocaleDateString('ru-RU', options); // на русском
+    readyDateStr = readyDateStr.charAt(0).toUpperCase() + readyDateStr.slice(1); // заглавная первая буква
+  }
 
   return ctx.reply(
     `📋 *Проверьте ваш заказ ${order.order_number}*\n\n` +
@@ -1284,7 +1298,7 @@ async function buildOrderSummary(ctx, order, extra = "") {
       `🔢 Количество: *${order.quantity} шт*\n` +
       `⏱ Срочность: *${urgencyLabels[order.urgency] || order.urgency}*\n` +
       `🚚 Доставка: *${deliveryLabels[order.delivery_type] || order.delivery_type}*\n` +
-      `📅 Готовность: *${order.ready_date || "уточняется"}*\n` +
+      `📅 Готовность: *${readyDateStr}*\n` +
       `───────────────\n` +
       `💰 Стоимость: *${price}*${extra}\n\n` +
       `Всё верно? Подтвердите заказ.`,
