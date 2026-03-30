@@ -558,7 +558,29 @@ async function updateSession(sessionId, fields) {
   const values = [sessionId];
   let idx = 2;
 
-  for (const [key, value] of Object.entries(fields)) {
+  for (const [key, rawValue] of Object.entries(fields)) {
+    let value = rawValue;
+  
+    if (key === "orderId") {
+      // ✅ ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА
+      value = 
+        Number.isInteger(value) && value > 0 
+          ? value 
+          : null;
+      
+      // ✅ Если orderId указан, проверяем существует ли заказ
+      if (value !== null) {
+        const orderExists = await pool.query(
+          "SELECT id FROM orders WHERE id = $1",
+          [value]
+        );
+        if (orderExists.rows.length === 0) {
+          console.warn(`Order ${value} does not exist, setting orderId to NULL`);
+          value = null;
+        }
+      }
+    }
+    
     const col = columnMap[key] || key;
     setClauses.push(`${col} = $${idx}`);
     values.push(value);

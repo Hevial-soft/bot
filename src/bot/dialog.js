@@ -489,17 +489,29 @@ async function handleModelingSummary(ctx, msg, s, client) {
       urgency: s.modelingUrgency,
       photoId: s.photoId,
     });
-
+    
+    if (!order || !order.id) {
+      console.error("Failed to create modeling order", order);
+      return ctx.reply("Произошла ошибка при создании заказа. Попробуйте позже или /start");
+    }
+  
+    // Проверяем, что order существует
+    const orderId =
+      order && Number.isInteger(order.id) && order.id > 0 ? order.id : null;
+    const orderNumber = order?.order_number ?? "№?";
+  
+    // Обновляем сессию с правильным orderId
     await db.updateSession(s.id, {
       currentStep: STEPS.MODELING_CONFIRMED,
-      orderId: order.id,
+      orderId,
     });
-
-    // Постим в группу специалистов — БЕЗ кнопки моста, только с user_id
+  
+    // Отправляем уведомление специалистам
     await notify.notifyModelingOrder(order, client, ctx.from);
-
+  
+    // Сообщение пользователю
     return ctx.reply(
-      `✅ *Заявка ${order.order_number} принята!*\n\n` +
+      `✅ *Заявка ${orderNumber} принята!*\n\n` +
         `Специалист свяжется с вами напрямую в Telegram для уточнения деталей и стоимости.\n\n` +
         `⏱ Обычно это занимает до *1 рабочего дня*.\n\n` +
         `/status — статус заявки\n` +
@@ -1004,7 +1016,10 @@ async function handleDelivery(ctx, msg, s, client) {
   // Создаём черновик заказа в БД
   const order = await buildAndSaveOrder(s, client);
   await db.updateSession(s.id, {
-    orderId: order.id,
+    orderId:
+      Number.isInteger(order?.id) && order.id > 0
+        ? order.id
+        : null,
     orderNumber: order.order_number,
     currentStep: STEPS.ORDER_SUMMARY,
   });
@@ -1331,6 +1346,14 @@ async function buildAndSaveOrder(s, client) {
   }
   
   const order = await db.createOrderDraft(client.id);
+  console.log("ORDER ID:", order.id);
+  
+  const check = await db.query(
+    "SELECT id FROM orders WHERE id = $1",
+    [order.id]
+  );
+  
+  console.log("FOUND IN DB:", check.rows);
   const material = await db.getMaterialByCode(s.confirmedMaterial);
 
   const readyDate = await pricing.calcReadyDate({
@@ -1380,7 +1403,9 @@ async function saveUserMessage(msg, client, s) {
     (msg?.photo ? msg.photo[msg.photo.length - 1].file_id : null);
   await db.saveDialogMessage({
     clientId: client.id,
-    orderId: s.orderId,
+    orderId: Number.isInteger(s.orderId) && s.orderId > 0
+      ? s.orderId
+      : null,
     orderNumber: s.orderNumber,
     sessionId: s.id,
     role: "USER",
