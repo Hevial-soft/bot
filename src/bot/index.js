@@ -10,9 +10,10 @@ const { registerSpecialistCommands } = require("../services/specialists");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// Устанавливаем экземпляр бота в сервис уведомлений раньше, чем регистрируем хендлеры
+notify.setBotInstance(bot);
 registerCallbacks(bot);
 registerSpecialistCommands(bot);
-notify.setBotInstance(bot)
 
 // ── Middleware: логгер ────────────────────────────────────────────────────
 bot.use(require("../middleware/logger"));
@@ -154,7 +155,12 @@ bot.on("callback_query", async (ctx) => {
     if (data.startsWith("bridge_open_")) {
       const clientChatId = parseInt(data.replace("bridge_open_", ""));
       const s = session.getOrCreate(userId, chatId);
-      notify.openBridge(s.orderNumber || "direct", chatId, clientChatId);
+      await notify.openBridge(
+        chatId,
+        clientChatId,
+        s.orderNumber || null,
+        ctx.from.username || ctx.from.first_name,
+      );
       return ctx.reply(
         `🔗 Мост открыт. Теперь ваши сообщения идут клиенту напрямую.\n` +
           `Чтобы закрыть диалог — напишите */endchat*`,
@@ -167,7 +173,12 @@ bot.on("callback_query", async (ctx) => {
       const parts = data.split("_");
       const orderNumber = parts[1];
       const clientChatId = parseInt(parts[2]);
-      notify.openBridge(orderNumber, chatId, clientChatId);
+      await notify.openBridge(
+        chatId,
+        clientChatId,
+        orderNumber,
+        ctx.from.username || ctx.from.first_name,
+      );
       return ctx.reply(
         `🔗 Диалог по заказу ${orderNumber} открыт. Пишите — клиент получит.`,
       );

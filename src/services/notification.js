@@ -21,6 +21,13 @@ function getGroupId() {
   return id ? parseInt(id) : null;
 }
 
+function escapeMd(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/([_*\[\]()`])/g, '\\$1');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // УВЕДОМЛЕНИЯ О НОВЫХ ЗАКАЗАХ (ПЕЧАТЬ)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -37,24 +44,24 @@ async function notifyNewOrder(order, client) {
     COURIER: '🚗 Курьер', SDEK: '📦 СДЭК', PICKUP: '🤝 Самовывоз',
   };
 
-  const clientTag = client.username
-    ? `@${client.username}`
-    : `[${client.first_name}](tg://user?id=${client.telegram_user_id})`;
+    const clientTag = client.username
+      ? `@${escapeMd(client.username)}`
+      : `${escapeMd(client.first_name || 'Клиент')}`;
 
   const text =
     `🆕 *Новый заказ ${order.order_number}*\n\n` +
     `👤 Клиент: ${clientTag}\n` +
     `🆔 TG ID: \`${client.telegram_user_id}\`\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `🧱 Материал: *${order.material_code}* (${order.method_code})\n` +
+      `🧱 Материал: *${escapeMd(order.material_code)}* (${escapeMd(order.method_code)})\n` +
     `📐 Размер: ${order.size_x || '?'}×${order.size_y || '?'}×${order.size_z || '?'} мм\n` +
     (order.volume_cm3 ? `📦 Объём: ${parseFloat(order.volume_cm3).toFixed(1)} см³\n` : '') +
     `🔢 Количество: ${order.quantity} шт\n` +
     `⏱ Срочность: ${urgencyLabels[order.urgency] || order.urgency}\n` +
     `🚚 Доставка: ${deliveryLabels[order.delivery_type] || order.delivery_type}\n` +
-    `💰 Сумма: ${order.total_price ? order.total_price + ' ₽' : 'не рассчитана'}\n` +
+      `💰 Сумма: ${order.total_price ? escapeMd(order.total_price) + ' ₽' : 'не рассчитана'}\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📝 Задача: _${order.use_description || 'не указана'}_`;
+      `📝 Задача: _${escapeMd(order.use_description || 'не указана')}_`;
 
   try {
     // 1️⃣ Отправляем файл заказа (если есть)
@@ -111,18 +118,18 @@ async function notifyModelingOrder(order, client, fromUser) {
     ? `${order.size_x}×${order.size_y}×${order.size_z} мм`
     : 'не указаны';
 
-  // Прямая ссылка на клиента для связи
-  const clientLink = fromUser.username
-    ? `@${fromUser.username}`
-    : `[${client.first_name}](tg://user?id=${order.telegram_id})`;
+    // Прямая ссылка на клиента для связи
+    const clientLink = fromUser.username
+      ? `@${escapeMd(fromUser.username)}`
+      : `${escapeMd(client.first_name || 'Клиент')}`;
 
   const text =
     `📐 *Заявка на 3D-моделирование ${order.order_number}*\n\n` +
     `👤 Клиент: ${clientLink}\n` +
     `🆔 TG ID: \`${order.telegram_id}\`\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📝 Описание: _${order.use_description}_\n` +
-    `📐 Габариты: *${dims}*\n` +
+      `📝 Описание: _${escapeMd(order.use_description || '')}_\n` +
+      `📐 Габариты: *${escapeMd(dims)}*\n` +
     `🔧 Тип: *${order.is_reverse ? 'Реверс-инжиниринг' : 'Новая деталь'}*\n` +
     `📦 Передача: *${deliveryLabels[order.delivery_type] || order.delivery_type}*\n` +
     `⏱ Срочность: *${urgencyLabels[order.urgency] || order.urgency}*\n` +
@@ -143,7 +150,7 @@ async function notifyModelingOrder(order, client, fromUser) {
       const fileId = order.file_url.replace('tg_file:', '');
     
       await _bot.telegram.sendDocument(groupId, fileId, {
-        caption: `📎 Файл моделирования ${order.order_number}`,
+          caption: `📎 Файл моделирования ${escapeMd(order.order_number)}`,
       });
     }
 
@@ -151,7 +158,7 @@ async function notifyModelingOrder(order, client, fromUser) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '✅ Взял в работу', callback_data: `modeling_take_${order.order_number}` }],
+            [{ text: '✅ Взял в работу', callback_data: `modeling_take_${order.order_number}` }],
         ]
       }
     });
@@ -179,13 +186,13 @@ async function notifySpecialistGroup(ctx, client, session) {
     : '_история пуста_';
 
   const clientTag = client.username
-    ? `@${client.username}`
-    : `[${client.first_name}](tg://user?id=${ctx.from.id})`;
+    ? `@${escapeMd(client.username)}`
+    : `${escapeMd(client.first_name || 'Клиент')}`;
 
   const orderInfo = session.order_number
-    ? `📋 Заказ: *${session.order_number}*\n` +
-      `🧱 Материал: ${session.confirmed_material || 'не выбран'}\n` +
-      `📐 Размер: ${session.size_x ? `${session.size_x}×${session.size_y}×${session.size_z} мм` : 'не указан'}\n`
+    ? `📋 Заказ: *${escapeMd(session.order_number)}*\n` +
+      `🧱 Материал: ${escapeMd(session.confirmed_material || 'не выбран')}\n` +
+      `📐 Размер: ${session.size_x ? `${escapeMd(session.size_x)}×${escapeMd(session.size_y)}×${escapeMd(session.size_z)} мм` : 'не указан'}\n`
     : '_Заказ ещё не оформлен_\n';
 
   const text =
@@ -201,7 +208,7 @@ async function notifySpecialistGroup(ctx, client, session) {
     // Пересылаем фото если было в сессии
     if (session.photo_id) {
       await _bot.telegram.sendPhoto(groupId, session.photo_id, {
-        caption: `📷 Фото от клиента — ${client.first_name}`,
+        caption: `📷 Фото от клиента — ${escapeMd(client.first_name || '')}`,
       });
     }
 
@@ -229,6 +236,7 @@ async function notifySpecialistGroup(ctx, client, session) {
 
 // Открыть мост: специалист взял диалог
 async function openBridge(specialistChatId, clientChatId, orderNumber, specialistUsername) {
+  console.log('[Notify] openBridge called', { specialistChatId, clientChatId, orderNumber, specialistUsername });
   // Проверяем что у специалиста нет активного моста
   const existing = await db.getBridgeBySpecialist(specialistChatId);
   if (existing) {
@@ -305,6 +313,7 @@ async function isInBridge(chatId) {
 // ── Переслать сообщение через мост ───────────────────────────────────────
 
 async function forwardThroughBridge(fromChatId, text, fileId, messageType) {
+  console.log('[Bridge] forwardThroughBridge', { fromChatId, messageType, text: text ? text.slice(0,80) : null, fileId });
   const bridge = await db.getBridgeByAnyParty(fromChatId);
   if (!bridge || !_bot) return false;
 

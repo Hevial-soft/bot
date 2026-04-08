@@ -48,29 +48,36 @@ function urgencyLabel(u) {
   return { STANDARD:'Стандарт',PLUS200:'🚀 +200₽',PLUS500:'⚡ +500₽',PLUS800:'🔥 +800₽' }[u] || u;
 }
 
+function escapeMd(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/([_*\[\]()`])/g, '\\$1');
+}
+
 function buildOrderCard(order) {
   const clientTag = order.username
-    ? `@${order.username}`
-    : `[${order.first_name||'Клиент'}](tg://user?id=${order.telegram_user_id})`;
+    ? `@${escapeMd(order.username)}`
+    : `${escapeMd(order.first_name||'Клиент')}`;
   const dims = (order.size_x && order.size_y && order.size_z)
     ? `${order.size_x}×${order.size_y}×${order.size_z} мм` : 'не указаны';
-  const price = order.total_price ? `*${order.total_price} ₽*` : '_рассчитывается_';
+  const price = order.total_price ? `*${escapeMd(order.total_price)} ₽*` : '_рассчитывается_';
 
-  return `${statusIcon(order.status)} *Заказ ${order.order_number}*\n\n` +
-    `👤 Клиент: ${clientTag}\n` +
-    `🆔 TG ID: \`${order.telegram_user_id}\`\n` +
-    `📊 Статус: *${order.status}*\n` +
+  return `${statusIcon(order.status)} *Заказ ${escapeMd(order.order_number)}*\n\n` +
+  `👤 Клиент: ${clientTag}\n` +
+  `🆔 TG ID: \`${escapeMd(order.telegram_user_id)}\`\n` +
+  `📊 Статус: *${escapeMd(order.status)}*\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
-    `🧱 Материал: *${order.material_code}* (${order.method_code})\n` +
+    `🧱 Материал: *${escapeMd(order.material_code)}* (${escapeMd(order.method_code)})\n` +
     `📐 Размеры: ${dims}\n` +
     (order.volume_cm3 ? `📦 Объём: ~${parseFloat(order.volume_cm3).toFixed(1)} см³\n` : '') +
     `🔢 Количество: *${order.quantity} шт*\n` +
     `⏱ Срочность: ${urgencyLabel(order.urgency)}\n` +
     `🚚 Доставка: ${deliveryLabel(order.delivery_type)}\n` +
     `💰 Стоимость: ${price}\n` +
-    `📅 Срок: ${order.ready_date || 'уточняется'}\n` +
+    `📅 Срок: ${escapeMd(order.ready_date || 'уточняется')}\n` +
     (order.use_description
-      ? `━━━━━━━━━━━━━━━━━━━━\n📝 Задача: _${order.use_description}_\n` : '');
+      ? `━━━━━━━━━━━━━━━━━━━━\n📝 Задача: _${escapeMd(order.use_description)}_\n` : '');
 }
 
 function buildOrderButtons(order) {
@@ -142,9 +149,9 @@ function registerSpecialistCommands(bot) {
       text += `${statusIcon(st)} *${st}*\n`;
       for (const o of groups[st]) {
         const mine = o.assigned_specialist_id === ctx.from.id ? ' *(мой)*' : '';
-        text += `  • \`${o.order_number}\` — ${o.first_name||'Клиент'} | ` +
-                `${o.material_code} ${o.quantity}шт | ` +
-                `${o.total_price||'?'}₽${mine}\n`;
+        text += `  • \`${escapeMd(o.order_number)}\` — ${escapeMd(o.first_name||'Клиент')} | ` +
+                `${escapeMd(o.material_code)} ${escapeMd(o.quantity)}шт | ` +
+                `${escapeMd(o.total_price||'?')}₽${mine}\n`;
       }
       text += '\n';
     }
@@ -169,7 +176,7 @@ function registerSpecialistCommands(bot) {
       return ctx.reply('У вас нет активных заказов.');
     let text = `🖨 *Ваши заказы (${orders.length}):*\n\n`;
     for (const o of orders)
-      text += `${statusIcon(o.status)} \`${o.order_number}\` — ${o.first_name||'Клиент'} | ${o.material_code} | *${o.status}*\n`;
+      text += `${statusIcon(o.status)} \`${escapeMd(o.order_number)}\` — ${escapeMd(o.first_name||'Клиент')} | ${escapeMd(o.material_code)} | *${escapeMd(o.status)}*\n`;
     return ctx.reply(text, { parse_mode: 'Markdown' });
   });
 
@@ -220,7 +227,7 @@ function registerSpecialistCommands(bot) {
         { parse_mode: 'Markdown' }
       );
     return ctx.reply(
-      `👤 *${spec.name}* | ${spec.role}\nID: \`${spec.telegram_id}\`\n/menu — команды`,
+      `👤 *${escapeMd(spec.name)}* | ${escapeMd(spec.role)}\nID: \`${escapeMd(spec.telegram_id)}\`\n/menu — команды`,
       { parse_mode: 'Markdown' }
     );
   });
@@ -247,7 +254,7 @@ function registerSpecialistCommands(bot) {
     const specName = ctx.from.first_name || 'Специалист';
     try {
       await ctx.telegram.sendMessage(order.telegram_user_id,
-        `👀 *${specName}* уже посмотрел вашу заявку и займётся ею сегодня.\n\n` +
+        `👀 *${escapeMd(specName)}* уже посмотрел вашу заявку и займётся ею сегодня.\n\n` +
         `Вы получите уведомление с подтверждением стоимости.`,
         { parse_mode: 'Markdown' });
     } catch {}
@@ -464,11 +471,11 @@ function registerSpecialistCommands(bot) {
 async function sendPaymentRequest(ctx, order) {
   try {
     await ctx.telegram.sendMessage(order.telegram_user_id,
-      `✅ *Заказ ${order.order_number} подтверждён!*\n\n` +
-      `🧱 ${order.material_code} (${order.method_code})\n` +
-      `📐 ${order.size_x}×${order.size_y}×${order.size_z} мм · ${order.quantity} шт\n` +
-      `💰 Стоимость: *${order.total_price} ₽*\n` +
-      `📅 Готовность: *${order.ready_date||'уточняется'}*\n\n` +
+      `✅ *Заказ ${escapeMd(order.order_number)} подтверждён!*\n\n` +
+      `🧱 ${escapeMd(order.material_code)} (${escapeMd(order.method_code)})\n` +
+      `📐 ${escapeMd(order.size_x)}×${escapeMd(order.size_y)}×${escapeMd(order.size_z)} мм · ${escapeMd(order.quantity)} шт\n` +
+      `💰 Стоимость: *${escapeMd(order.total_price)} ₽*\n` +
+      `📅 Готовность: *${escapeMd(order.ready_date||'уточняется')}*\n\n` +
       `Для начала печати оплатите заказ:`,
       {
         parse_mode: 'Markdown',
@@ -485,10 +492,10 @@ async function sendPaymentRequest(ctx, order) {
 async function notifyClientPriceAdjusted(ctx, order, newPrice, reason) {
   try {
     await ctx.telegram.sendMessage(order.telegram_user_id,
-      `💰 *Уточнение по заказу ${order.order_number}*\n\n` +
+      `💰 *Уточнение по заказу ${escapeMd(order.order_number)}*\n\n` +
       `Специалист скорректировал стоимость:\n` +
-      `Причина: _${reason}_\n` +
-      `Новая стоимость: *${newPrice} ₽*\n\n` +
+      `Причина: _${escapeMd(reason)}_\n` +
+      `Новая стоимость: *${escapeMd(newPrice)} ₽*\n\n` +
       `Подтвердите для начала печати:`,
       {
         parse_mode: 'Markdown',
@@ -505,8 +512,8 @@ async function notifyClientPriceAdjusted(ctx, order, newPrice, reason) {
 async function notifyClientFileIssue(ctx, order, description) {
   try {
     await ctx.telegram.sendMessage(order.telegram_user_id,
-      `⚠️ *По вашему заказу ${order.order_number} есть вопрос*\n\n` +
-      `${description}\n\n` +
+      `⚠️ *По вашему заказу ${escapeMd(order.order_number)} есть вопрос*\n\n` +
+      `${escapeMd(description)}\n\n` +
       `Что хотите сделать?`,
       {
         parse_mode: 'Markdown',
