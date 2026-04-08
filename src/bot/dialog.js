@@ -132,7 +132,7 @@ async function handleStart(ctx, client) {
   await db.resetSession(ctx.from.id, ctx.chat.id, STEPS.AWAITING_ORDER_TYPE);
 
   return ctx.reply(
-    `👋 Привет, *${client.first_name}*!\n\n` +
+    `👋 Привет, *${escapeMarkdown(client.first_name)}*!\n\n` +
       `Я бот *Hevial* — 3D-печать и моделирование под ваш запрос.\n` +
       `Не нужно разбираться в материалах — просто опишите задачу.\n\n` +
       `Что хотите сделать?`,
@@ -448,8 +448,8 @@ async function showModelingSummary(ctx, s, client, isUrgent) {
 
   return ctx.reply(
     `📋 *Итог заявки на моделирование*\n\n` +
-      `📝 Описание: _${s.useDescription}_\n` +
-      `📐 Габариты: *${dims}*\n` +
+      `📝 Описание: _${escapeMarkdown(s.useDescription)}_\n` +
+      `📐 Габариты: *${escapeMarkdown(dims)}*\n` +
       `🔧 Тип: *${s.isReverse ? "Реверс-инжиниринг" : "Новая деталь"}*\n` +
       `📦 Передача детали: *${deliveryLabels[delivery]}*\n` +
       `⏱ Срочность: *${urgencyText}*\n\n` +
@@ -544,7 +544,7 @@ function askUseCase(ctx) {
 }
 
 async function handleUseCase(ctx, msg, s, client) {
-  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
+  const text = escapeMarkdown(msg?.text?.trim()) || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
@@ -621,7 +621,7 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
       alts
         .map(
           (m) =>
-            `• *${m.display_name}*\n  ${m.use_cases.slice(0, 2).join(", ")}`,
+            `• *${escapeMarkdown(m.display_name)}*\n  ${escapeMarkdown(m.use_cases.slice(0, 2).join(", "))}`,
         )
         .join("\n\n");
     return ctx.reply(altText, {
@@ -698,13 +698,13 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
       currentStep: STEPS.MATERIAL_CONFLICT_RESOLVE,
     });
     return ctx.reply(
-      `⚠️ *Внимание!*\n\nВы выбрали *${material.display_name}*, но он может не подойти:\n` +
+      `⚠️ *Внимание!*\n\nВы выбрали *${escapeMarkdown(material.display_name)}*, но он может не подойти:\n` +
         `— ${conflicts.join("\n— ")}\n\n` +
-        `Рекомендую *${recommended}* для ваших условий.\n\nКак поступим?`,
+        `Рекомендую *${escapeMarkdown(recommended)}* для ваших условий.\n\nКак поступим?`,
       {
         parse_mode: "Markdown",
         ...btn([
-          [`🔄 Принять рекомендацию (${recommended})`, "conflict_accept"],
+          [`🔄 Принять рекомендацию (${escapeMarkdown(recommended)})`, "conflict_accept"],
           [`✅ Оставить ${materialCode}`, "conflict_keep"],
           ["❌ Отменить", "cmd_cancel"],
         ]),
@@ -1307,15 +1307,15 @@ async function buildOrderSummary(ctx, order, extra = "") {
   }
 
   return ctx.reply(
-    `📋 *Проверьте ваш заказ ${order.order_number}*\n\n` +
-      `🧱 Материал: *${order.material_code}* (${order.method_code})\n` +
-      `📐 Размеры: *${order.size_x}×${order.size_y}×${order.size_z} мм*\n` +
-      `🔢 Количество: *${order.quantity} шт*\n` +
+    `📋 *Проверьте ваш заказ ${escapeMarkdown(order.order_number)}*\n\n` +
+      `🧱 Материал: *${escapeMarkdown(order.material_code)}* (${escapeMarkdown(order.method_code)})\n` +
+      `📐 Размеры: *${escapeMarkdown(order.size_x)}×${escapeMarkdown(order.size_y)}×${escapeMarkdown(order.size_z)} мм*\n` +
+      `🔢 Количество: *${escapeMarkdown(order.quantity)} шт*\n` +
       `⏱ Срочность: *${urgencyLabels[order.urgency] || order.urgency}*\n` +
       `🚚 Доставка: *${deliveryLabels[order.delivery_type] || order.delivery_type}*\n` +
-      `📅 Готовность: *${readyDateStr}*\n` +
+      `📅 Готовность: *${escapeMarkdown(readyDateStr)}*\n` +
       `───────────────\n` +
-      `💰 Стоимость: *${price}*${extra}\n\n` +
+      `💰 Стоимость: *${escapeMarkdown(price)}*${escapeMarkdown(extra)}\n\n` +
       `Всё верно? Подтвердите заказ.`,
     {
       parse_mode: "Markdown",
@@ -1348,7 +1348,7 @@ async function buildAndSaveOrder(s, client) {
   const order = await db.createOrderDraft(client.id);
   console.log("ORDER ID:", order.id);
   
-  const check = await db.query(
+  const check = await db.pool.query(
     "SELECT id FROM orders WHERE id = $1",
     [order.id]
   );
@@ -1533,6 +1533,11 @@ function getMaterialDensity(materialCode) {
   if (!materialCode) return 1.24;
   const code = materialCode.toUpperCase();
   return densities[code] || 1.24;
+}
+
+function escapeMarkdown(text) {
+  if (text === null || text === undefined) return "";
+  return String(text).replace(/([_\*\[\]\(\)~`>#+\-=|{}\.!])/g, "\\$1");
 }
 
 function cancelRow() {
