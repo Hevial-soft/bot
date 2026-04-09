@@ -151,23 +151,6 @@ bot.on("callback_query", async (ctx) => {
       return ctx.reply(`🔄 Заказ ${orderNumber} отправлен на уточнение.`);
     }
 
-    // Открыть мост с клиентом по его chat_id
-    if (data.startsWith("bridge_open_")) {
-      const clientChatId = parseInt(data.replace("bridge_open_", ""));
-      const s = session.getOrCreate(userId, chatId);
-      await notify.openBridge(
-        chatId,
-        clientChatId,
-        s.orderNumber || null,
-        ctx.from.username || ctx.from.first_name,
-      );
-      return ctx.reply(
-        `🔗 Мост открыт. Теперь ваши сообщения идут клиенту напрямую.\n` +
-          `Чтобы закрыть диалог — напишите */endchat*`,
-        { parse_mode: "Markdown" },
-      );
-    }
-
     if (data.startsWith("bridge_") && data.includes("_")) {
       // bridge_{orderNumber}_{clientChatId}
       const parts = data.split("_");
