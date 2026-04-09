@@ -705,6 +705,8 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
   }
 
   await db.updateSession(s.id, { confirmedMaterial: materialCode });
+  // Обновляем сессию в памяти, чтобы последующие вызовы использовали новый материал
+  s.confirmedMaterial = materialCode;
   return proceedToMethodWarning(ctx, s);
 }
 
@@ -718,6 +720,9 @@ async function handleMaterialConflict(ctx, msg, s, client) {
     confirmedMaterial: confirmed,
     materialOverridden: !accept,
   });
+  // Обновляем сессию в памяти, чтобы новый материал сразу использовался в дальнейшем
+  s.confirmedMaterial = confirmed;
+  s.materialOverridden = !accept;
   return proceedToMethodWarning(ctx, s);
 }
 
@@ -750,7 +755,7 @@ async function proceedToMethodWarning(ctx, s) {
     method === "RESIN"
       ? `✅ Материал: *${escapeMarkdown(material?.display_name || s.confirmedMaterial)}* (фотополимер)\n\n` +
         `ℹ️ ${warning}\n${sizeNote}\n⏱ Срок — *5 рабочих дней*`
-      : `✅ Материал: *${escapeMarkdown(material?.display_name || s.confirmedMaterial)}* (FDM)\n\n` +
+      : `✅ Материал: *${material?.display_name || s.confirmedMaterial}* (FDM)\n\n` +
         `ℹ️ ${warning}\n${sizeNote}\n` +
         `Если нужна идеальная гладкость — только фотополимер.`;
 
@@ -1321,8 +1326,8 @@ async function buildOrderSummary(ctx, order, extra = "") {
       `🧱 Материал: *${escapeMarkdown(order.material_code)}* (${escapeMarkdown(order.method_code)})\n` +
       `📐 Размеры: *${escapeMarkdown(order.size_x)}×${escapeMarkdown(order.size_y)}×${escapeMarkdown(order.size_z)} мм*\n` +
       `🔢 Количество: *${escapeMarkdown(order.quantity)} шт*\n` +
-      `⏱ Срочность: *${escapeMarkdown(urgencyLabels[order.urgency] || order.urgency)}*\n` +
-      `🚚 Доставка: *${escapeMarkdown(deliveryLabels[order.delivery_type] || order.delivery_type)}*\n` +
+      `⏱ Срочность: *${urgencyLabels[order.urgency] || order.urgency}*\n` +
+      `🚚 Доставка: *${deliveryLabels[order.delivery_type] || order.delivery_type}*\n` +
       `📅 Готовность: *${escapeMarkdown(readyDateStr)}*\n` +
       `───────────────\n` +
       `💰 Стоимость: *${escapeMarkdown(price)}*${escapeMarkdown(extra)}\n\n` +
@@ -1541,7 +1546,7 @@ function getMaterialDensity(materialCode) {
 
 function escapeMarkdown(text) {
   if (text === null || text === undefined) return "";
-  return String(text).replace(/([_\*\[\]\(\)~`>#+\-=|{}\.!])/g, "\\$1");
+  return String(text).replace(/([_*`\[\]\(\)])/g, "\\$1");
 }
 
 function cancelRow() {
