@@ -56,6 +56,42 @@ async function safeSendMessage(ctxOrTelegram, chatId, text, options = {}) {
     throw new Error("Invalid telegram object");
   }
 
+  // Pre-check: if we're about to send with parse_mode, detect common unbalanced
+  // Markdown-like entities and try sending an escaped version first to avoid
+  // "can't parse entities / can't find end of the entity" errors.
+  try {
+    const optsPreview = Object.assign({}, options);
+    if (optsPreview.parse_mode) {
+      try {
+        const s = String(text || "");
+        const count = (ch) => s.split(ch).length - 1;
+        const hasUnbalanced =
+          count("`") % 2 !== 0 ||
+          count("*") % 2 !== 0 ||
+          count("_") % 2 !== 0 ||
+          count("[") !== count("]") ||
+          count("(") !== count(")");
+        if (hasUnbalanced) {
+          // Try sending escaped text with original options (keeps parse_mode)
+          const escaped = escapeMd(text);
+          try {
+            return await telegram.sendMessage(chatId, escaped, optsPreview);
+          } catch (e) {
+            // If this fails, fall through to the normal send/fallback logic below
+            console.error(
+              "[safeSendMessage] pre-escape send failed:",
+              e && (e.response?.description || e.message || e),
+            );
+          }
+        }
+      } catch (e) {
+        // Ignore any issues in the pre-check and continue to normal send attempts
+      }
+    }
+  } catch (e) {
+    // noop
+  }
+
   try {
     return await telegram.sendMessage(chatId, text, options);
   } catch (err) {
@@ -94,17 +130,81 @@ async function safeReply(ctx, text, options = {}) {
     console.error("[safeReply] invalid ctx");
     throw new Error("Invalid ctx");
   }
+
   try {
     return await ctx.reply(text, options);
   } catch (err) {
-    console.error(
-      "[safeReply] reply failed:",
-      err && (err.response?.description || err.message || err),
-    );
+    // Primary diagnostic log
+    const descRaw = err && (err.response?.description || err.message || "");
+    console.error("[safeReply] reply failed:", descRaw || err);
+
+    // Try to extract byte offset from Telegram entity parse error to help debugging
+    try {
+      const descStr = String(descRaw || "");
+      const offsetMatch =
+        /end of the entity starting at byte offset\s*(\d+)/i.exec(descStr) ||
+        /byte offset\s*(\d+)/i.exec(descStr);
+      if (offsetMatch) {
+        const offset = parseInt(offsetMatch[1], 10);
+        try {
+          // Telegram reports byte offsets (UTF-8). Build a snippet around that byte offset.
+          const buf = Buffer.from(String(text || ""), "utf8");
+          const start = Math.max(0, offset - 40);
+          const end = Math.min(buf.length, offset + 40);
+          const snippet = buf.slice(start, end).toString("utf8");
+          console.error(
+            "[safeReply] parse-entities error offset:",
+            offset,
+            "snippet(utf8 around offset):",
+            JSON.stringify(snippet),
+          );
+        } catch (snipErr) {
+          console.error(
+            "[safeReply] failed to build snippet around offset:",
+            snipErr && (snipErr.message || snipErr),
+          );
+        }
+      }
+    } catch (mErr) {
+      // ignore extraction problems
+    }
+
+    // Normalize error description for checks
+    const errDesc = String(descRaw || "").toLowerCase();
+
+    // First attempt: if Telegram complains about entities, try escaping Markdown-like characters
+    // This often fixes "can't parse entities" / "can't find end of the entity" errors.
+    try {
+      if (
+        /can't parse entities/.test(errDesc) ||
+        /can't find end of the entity/.test(errDesc) ||
+        /can't parse message entities/.test(errDesc)
+      ) {
+        try {
+          // Keep the original options (including parse_mode) but send escaped text
+          const escaped = escapeMd(text);
+          console.error("[safeReply] attempting resend with escaped Markdown");
+          const res = await ctx.reply(escaped, Object.assign({}, options));
+          console.error("[safeReply] resend with escaped Markdown succeeded");
+          return res;
+        } catch (e) {
+          console.error(
+            "[safeReply] retry with escaped markdown failed:",
+            e && (e.response?.description || e.message || e),
+          );
+          // fall through to other retries
+        }
+      }
+    } catch (e) {
+      // ignore regex/escape issues and continue to other fallbacks
+    }
+
+    // Second attempt: remove parse_mode and retry (some parse errors originate from parse_mode)
     const opts = Object.assign({}, options);
     if (opts.parse_mode) {
       delete opts.parse_mode;
       try {
+        console.error("[safeReply] retrying without parse_mode");
         return await ctx.reply(text, opts);
       } catch (e) {
         console.error(
@@ -113,14 +213,18 @@ async function safeReply(ctx, text, options = {}) {
         );
       }
     }
+
+    // Final attempt: send a plain text fallback with Markdown-like characters stripped
     try {
       const plain = _stripMarkdownLike(text);
+      console.error("[safeReply] final fallback: sending stripped plain text");
       return await ctx.reply(plain, {});
     } catch (e) {
       console.error(
         "[safeReply] final retry failed:",
         e && (e.response?.description || e.message || e),
       );
+      // Re-throw the original error so the caller can react if needed
       throw err;
     }
   }
@@ -308,14 +412,12 @@ function registerSpecialistCommands(bot) {
     }
     text += `_/order HVL-00001 — детали заказа_`;
 
-    const btns = orders
-      .slice(0, 5)
-      .map((o) => [
-        {
-          text: `${statusIcon(o.status)} ${o.order_number}`,
-          callback_data: `spec_view_${o.order_number}`,
-        },
-      ]);
+    const btns = orders.slice(0, 5).map((o) => [
+      {
+        text: `${statusIcon(o.status)} ${o.order_number}`,
+        callback_data: `spec_view_${o.order_number}`,
+      },
+    ]);
 
     return safeReply(ctx, text, {
       parse_mode: "Markdown",

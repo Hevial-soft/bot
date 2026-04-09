@@ -14,6 +14,16 @@ pool.on("error", (err) => {
   console.error("PostgreSQL pool error:", err);
 });
 
+// NOTE: If you observe Telegram "can't parse entities" errors coming from the
+// messaging helpers (for example `safeReply` in `src/services/specialists.js`),
+// consider improving `safeReply` to detect that specific error and retry by
+// sending an escaped/stripped version of the message. A robust approach is:
+// 1) On reply failure, inspect `err.response?.description` for
+//    "can't parse entities" (or similar).
+// 2) If found, retry by escaping Markdown entities (or remove parse_mode) and
+//    resend so the bot doesn't fail permanently when user content contains
+//    unmatched Markdown-like characters.
+
 // ── Клиенты ───────────────────────────────────────────────────────────────
 
 async function getOrCreateClient(telegramUser) {
@@ -73,9 +83,16 @@ async function updateOrder(orderNumber, fields) {
 }
 
 async function getOrderByNumber(orderNumber) {
-  const r = await pool.query("SELECT * FROM orders WHERE order_number = $1", [
-    orderNumber,
-  ]);
+  // Include client's telegram id so callers that need to message the client
+  // don't need an extra DB lookup. Provide it under both `telegram_user_id`
+  // (used by many service callers) and `client_telegram_id` (explicit name).
+  const r = await pool.query(
+    `SELECT o.*, c.telegram_user_id AS telegram_user_id, c.telegram_user_id AS client_telegram_id
+     FROM orders o
+     LEFT JOIN clients c ON o.client_id = c.id
+     WHERE o.order_number = $1`,
+    [orderNumber],
+  );
   return r.rows[0] || null;
 }
 
@@ -117,10 +134,19 @@ async function changeOrderStatus(
     [order.id, orderNumber, order.status, newStatus, changedBy, note],
   );
 
-  const r = await pool.query(
-    `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_number = $2 RETURNING *`,
-    [newStatus, orderNumber],
-  );
+  let r;
+  if (newStatus === "DELIVERED") {
+    // При пометке как выдан — устанавливаем timestamp delivered_at
+    r = await pool.query(
+      `UPDATE orders SET status = $1, delivered_at = NOW(), updated_at = NOW() WHERE order_number = $2 RETURNING *`,
+      [newStatus, orderNumber],
+    );
+  } else {
+    r = await pool.query(
+      `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_number = $2 RETURNING *`,
+      [newStatus, orderNumber],
+    );
+  }
   return r.rows[0];
 }
 
@@ -315,7 +341,7 @@ async function getRecentMessages(sessionId, limit = 10, orderNumber = null) {
      WHERE ${conditions.join(" AND ")}
      ORDER BY created_at DESC
      LIMIT $${idx}`,
-    values
+    values,
   );
 
   return r.rows.reverse();
@@ -560,27 +586,26 @@ async function updateSession(sessionId, fields) {
 
   for (const [key, rawValue] of Object.entries(fields)) {
     let value = rawValue;
-  
+
     if (key === "orderId") {
       // ✅ ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА
-      value = 
-        Number.isInteger(value) && value > 0 
-          ? value 
-          : null;
-      
+      value = Number.isInteger(value) && value > 0 ? value : null;
+
       // ✅ Если orderId указан, проверяем существует ли заказ
       if (value !== null) {
         const orderExists = await pool.query(
           "SELECT id FROM orders WHERE id = $1",
-          [value]
+          [value],
         );
         if (orderExists.rows.length === 0) {
-          console.warn(`Order ${value} does not exist, setting orderId to NULL`);
+          console.warn(
+            `Order ${value} does not exist, setting orderId to NULL`,
+          );
           value = null;
         }
       }
     }
-    
+
     const col = columnMap[key] || key;
     setClauses.push(`${col} = $${idx}`);
     values.push(value);
@@ -710,10 +735,18 @@ async function assignSpecialistToOrder(orderNumber, specialistTelegramId) {
 
 // Обновить статус заказа
 async function updateOrderStatus(orderNumber, newStatus) {
-  await pool.query(
-    `UPDATE orders SET status=$2, updated_at=NOW() WHERE order_number=$1`,
-    [orderNumber, newStatus],
-  );
+  // Если статус меняется на DELIVERED — проставляем timestamp доставки
+  if (newStatus === "DELIVERED") {
+    await pool.query(
+      `UPDATE orders SET status=$2, delivered_at=NOW(), updated_at=NOW() WHERE order_number=$1`,
+      [orderNumber, newStatus],
+    );
+  } else {
+    await pool.query(
+      `UPDATE orders SET status=$2, updated_at=NOW() WHERE order_number=$1`,
+      [orderNumber, newStatus],
+    );
+  }
 }
 
 // Обновить статус заявки моделирования

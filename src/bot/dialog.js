@@ -159,17 +159,14 @@ async function handleOrderType(ctx, msg, s, client) {
       currentStep: STEPS.AWAITING_FILE,
       orderType: "PRINT",
     });
-    return ctx.reply(
-      "📁 Есть файл модели или фото детали?",
-      {
-        ...btn([
-          ["📎 Загрузить STL/STEP", "file_upload"],
-          ["📷 Только фото + размеры", "file_photo"],
-          ["❓ Ничего нет, опишу задачу", "file_none"],
-        ]),
-        ...cancelRow(),
-      },
-    );
+    return ctx.reply("📁 Есть файл модели или фото детали?", {
+      ...btn([
+        ["📎 Загрузить STL/STEP", "file_upload"],
+        ["📷 Только фото + размеры", "file_photo"],
+        ["❓ Ничего нет, опишу задачу", "file_none"],
+      ]),
+      ...cancelRow(),
+    });
   }
 
   if (text === "type_modeling" || text.includes("модел")) {
@@ -230,9 +227,7 @@ async function handleAwaitingFile(ctx, msg, s, client) {
     return ctx.reply(
       "📷 Фото получено!\n\nОпишите деталь и укажите размеры (Д×Ш×В в мм).\nЕсли размеры неизвестны — мы можем сделать 3D-моделирование.",
       {
-        ...btn([
-          ["📐 Нужно моделирование", "need_modeling"],
-        ]),
+        ...btn([["📐 Нужно моделирование", "need_modeling"]]),
         ...cancelRow(),
       },
     );
@@ -241,15 +236,13 @@ async function handleAwaitingFile(ctx, msg, s, client) {
   // Кнопки
   if (text === "file_upload") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_FILE });
-    return ctx.reply(
-      "📎 Отправьте файл модели (STL, STEP, OBJ, 3MF):"
-    );
+    return ctx.reply("📎 Отправьте файл модели (STL, STEP, OBJ, 3MF):");
   }
 
   if (text === "file_photo") {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_FILE });
     return ctx.reply(
-      "📷 Отправьте фото детали (можно несколько) и укажите размеры:"
+      "📷 Отправьте фото детали (можно несколько) и укажите размеры:",
     );
   }
 
@@ -267,16 +260,13 @@ async function handleAwaitingFile(ctx, msg, s, client) {
   }
 
   // Ничего не прислали — повторяем
-  return ctx.reply(
-    "📁 Есть файл модели или фото детали?",
-    {
-      ...btn([
-        ["📎 Загрузить STL/STEP", "file_upload"],
-        ["📷 Только фото + размеры", "file_photo"],
-        ["❓ Ничего нет, опишу задачу", "file_none"],
-      ]),
-    },
-  );
+  return ctx.reply("📁 Есть файл модели или фото детали?", {
+    ...btn([
+      ["📎 Загрузить STL/STEP", "file_upload"],
+      ["📷 Только фото + размеры", "file_photo"],
+      ["❓ Ничего нет, опишу задачу", "file_none"],
+    ]),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -288,7 +278,7 @@ function askModelingUseCase(ctx) {
     "📐 *Расскажите о детали, которую нужно смоделировать:*\n\n" +
       "Например: _корпус для электроники_, _кронштейн крепления_, _декоративная накладка_\n\n" +
       "Чем подробнее — тем точнее будет модель 🎯",
-    { parse_mode: "Markdown"},
+    { parse_mode: "Markdown" },
   );
 }
 
@@ -309,9 +299,7 @@ async function handleModelingUseCase(ctx, msg, s, client) {
   return ctx.reply(
     "📏 *Габариты детали*\n\nЕсли знаете — укажите приблизительные размеры (мм).\nЕсли нет — нажмите «Не знаю».",
     {
-      ...btn([
-        ["❓ Не знаю размеры", "dim_unknown"],
-      ]),
+      ...btn([["❓ Не знаю размеры", "dim_unknown"]]),
     },
   );
 }
@@ -327,9 +315,7 @@ async function handleModelingDimensions(ctx, msg, s, client) {
         "Не смог распознать размеры. Напишите три числа через пробел: `50 30 20`\nИли нажмите «Не знаю».",
         {
           parse_mode: "Markdown",
-          ...btn([
-            ["❓ Не знаю размеры", "dim_unknown"],
-          ]),
+          ...btn([["❓ Не знаю размеры", "dim_unknown"]]),
           ...cancelRow(),
         },
       );
@@ -489,26 +475,28 @@ async function handleModelingSummary(ctx, msg, s, client) {
       urgency: s.modelingUrgency,
       photoId: s.photoId,
     });
-    
+
     if (!order || !order.id) {
       console.error("Failed to create modeling order", order);
-      return ctx.reply("Произошла ошибка при создании заказа. Попробуйте позже или /start");
+      return ctx.reply(
+        "Произошла ошибка при создании заказа. Попробуйте позже или /start",
+      );
     }
-  
+
     // Проверяем, что order существует
     const orderId =
       order && Number.isInteger(order.id) && order.id > 0 ? order.id : null;
     const orderNumber = order?.order_number ?? "№?";
-  
+
     // Обновляем сессию с правильным orderId
     await db.updateSession(s.id, {
       currentStep: STEPS.MODELING_CONFIRMED,
       orderId,
     });
-  
+
     // Отправляем уведомление специалистам
     await notify.notifyModelingOrder(order, client, ctx.from);
-  
+
     // Сообщение пользователю
     return ctx.reply(
       `✅ *Заявка ${orderNumber} принята!*\n\n` +
@@ -544,14 +532,15 @@ function askUseCase(ctx) {
 }
 
 async function handleUseCase(ctx, msg, s, client) {
-  const text = escapeMarkdown(msg?.text?.trim()) || ctx.callbackQuery?.data?.trim() || "";
+  const text =
+    escapeMarkdown(msg?.text?.trim()) || ctx.callbackQuery?.data?.trim() || "";
 
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
 
   if (text.length < 5) {
     return ctx.reply(
-      "Расскажите подробнее — где и как будет использоваться деталь?"
+      "Расскажите подробнее — где и как будет использоваться деталь?",
     );
   }
 
@@ -582,7 +571,9 @@ async function handleUseCase(ctx, msg, s, client) {
   const materials = await db.getAllMaterials();
   const suggestedRaw = await ai.suggestMaterial(text, materials);
   const suggested = normalizeMaterial(suggestedRaw);
-  const material = materials.find((m) => normalizeMaterial(m.code) === suggested);
+  const material = materials.find(
+    (m) => normalizeMaterial(m.code) === suggested,
+  );
 
   await db.updateSession(s.id, {
     suggestedMaterial: normalizeMaterial(suggested),
@@ -638,29 +629,27 @@ async function handleMaterialSuggestion(ctx, msg, s, client) {
   if (text === "mat_own" || text.includes("✏️")) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
     return ctx.reply(
-      "Напишите какой материал хотите (например: PLA, PETG, TPU, смола):"
+      "Напишите какой материал хотите (например: PLA, PETG, TPU, смола):",
     );
   }
 
   if (text === "action_specialist")
     return handleTransferToSpecialist(ctx, client);
 
-  return ctx.reply("Пожалуйста, выберите один из вариантов:", 
-    {
-      ...btn([
-        ["✅ Согласен", "mat_agree"],
-        ["🔄 Другие варианты", "mat_alternatives"],
-        ["✏️ Свой выбор", "mat_own"],
-        ["❌ Отменить", "cmd_cancel"],
-      ]),
-    },
-  );
+  return ctx.reply("Пожалуйста, выберите один из вариантов:", {
+    ...btn([
+      ["✅ Согласен", "mat_agree"],
+      ["🔄 Другие варианты", "mat_alternatives"],
+      ["✏️ Свой выбор", "mat_own"],
+      ["❌ Отменить", "cmd_cancel"],
+    ]),
+  });
 }
 
 async function handleMaterialClientChoice(ctx, msg, s, client) {
   const text = msg?.text?.trim() || ctx.callbackQuery?.data || "";
   const material = extractMaterial(text);
-  
+
   if (!material) {
     return ctx.reply(
       "Не распознал материал. Напишите: PLA, PETG, ABS, TPU, PEEK, нейлон, смола.",
@@ -682,7 +671,7 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
   if (!material) {
     await db.updateSession(s.id, { currentStep: STEPS.MATERIAL_CLIENT_CHOICE });
     return ctx.reply(
-      `Материал *${materialCode}* не найден в каталоге.\nДоступные: PLA, PETG, ABS, TPU, PEEK, Nylon, PC, SBS, Silk, Resin.`,
+      `Материал *${escapeMarkdown(materialCode)}* не найден в каталоге.\nДоступные: PLA, PETG, ABS, TPU, PEEK, Nylon, PC, SBS, Silk, Resin.`,
       { parse_mode: "Markdown" },
     );
   }
@@ -704,8 +693,11 @@ async function checkMaterialCompatibility(ctx, s, materialCode) {
       {
         parse_mode: "Markdown",
         ...btn([
-          [`🔄 Принять рекомендацию (${escapeMarkdown(recommended)})`, "conflict_accept"],
-          [`✅ Оставить ${materialCode}`, "conflict_keep"],
+          [
+            `🔄 Принять рекомендацию (${escapeMarkdown(recommended)})`,
+            "conflict_accept",
+          ],
+          [`✅ Оставить ${escapeMarkdown(materialCode)}`, "conflict_keep"],
           ["❌ Отменить", "cmd_cancel"],
         ]),
       },
@@ -720,7 +712,7 @@ async function handleMaterialConflict(ctx, msg, s, client) {
   const text = msg?.text?.trim() || "";
   const accept = text === "conflict_accept" || text.includes("🔄");
   const confirmed = normalizeMaterial(
-    accept ? (s.suggestedMaterial || "PETG") : s.clientMaterialWish
+    accept ? s.suggestedMaterial || "PETG" : s.clientMaterialWish,
   );
   await db.updateSession(s.id, {
     confirmedMaterial: confirmed,
@@ -736,9 +728,11 @@ async function handleMaterialConflict(ctx, msg, s, client) {
 async function proceedToMethodWarning(ctx, s) {
   if (!s.confirmedMaterial) {
     console.error("❌ confirmedMaterial is NULL", s);
-    return ctx.reply("Ошибка: материал не определён. Попробуйте ещё раз /start");
+    return ctx.reply(
+      "Ошибка: материал не определён. Попробуйте ещё раз /start",
+    );
   }
-  
+
   const method = (s.confirmedMaterial || "").startsWith("RESIN")
     ? "RESIN"
     : "FDM";
@@ -754,9 +748,9 @@ async function proceedToMethodWarning(ctx, s) {
 
   const text =
     method === "RESIN"
-      ? `✅ Материал: *${material?.display_name || s.confirmedMaterial}* (фотополимер)\n\n` +
+      ? `✅ Материал: *${escapeMarkdown(material?.display_name || s.confirmedMaterial)}* (фотополимер)\n\n` +
         `ℹ️ ${warning}\n${sizeNote}\n⏱ Срок — *5 рабочих дней*`
-      : `✅ Материал: *${material?.display_name || s.confirmedMaterial}* (FDM)\n\n` +
+      : `✅ Материал: *${escapeMarkdown(material?.display_name || s.confirmedMaterial)}* (FDM)\n\n` +
         `ℹ️ ${warning}\n${sizeNote}\n` +
         `Если нужна идеальная гладкость — только фотополимер.`;
 
@@ -788,7 +782,7 @@ async function handleMethodWarning(ctx, msg, s, client) {
     await db.updateSession(s.id, { currentStep: STEPS.AWAITING_QUANTITY });
     return ctx.reply(
       `📐 Размеры из файла: *${s.sizeX}×${s.sizeY}×${s.sizeZ} мм*\n\nСколько штук нужно напечатать?`,
-      { parse_mode: "Markdown"},
+      { parse_mode: "Markdown" },
     );
   }
 
@@ -841,7 +835,7 @@ async function runStlAnalysis(ctx, s, fileId) {
   // Если анализ не удался — просим ввести вручную
   await db.updateSession(s.id, { currentStep: STEPS.AWAITING_SIZE });
   return ctx.reply(
-    "⚠️ Не удалось автоматически определить размеры.\nПожалуйста, укажите вручную (Д×Ш×В в мм):"
+    "⚠️ Не удалось автоматически определить размеры.\nПожалуйста, укажите вручную (Д×Ш×В в мм):",
   );
 }
 
@@ -878,7 +872,7 @@ async function handleSize(ctx, msg, s, client) {
   if (!dims) {
     return ctx.reply(
       "Не смог распознать размеры. Напишите три числа через пробел: `50 30 20`\nИли загрузите STL-файл.",
-      { parse_mode: "Markdown"},
+      { parse_mode: "Markdown" },
     );
   }
 
@@ -951,29 +945,21 @@ async function handleQuantity(ctx, msg, s, client) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleUrgency(ctx, msg, s, client) {
-  const text =
-    msg?.text?.trim() ||
-    ctx.callbackQuery?.data?.trim() ||
-    "";
+  const text = msg?.text?.trim() || ctx.callbackQuery?.data?.trim() || "";
   const urgency = parseUrgency(text);
   await db.updateSession(s.id, {
     urgency,
     currentStep: STEPS.AWAITING_DELIVERY,
   });
 
-  return ctx.reply(
-    "🚚 Как хотите получить заказ?",
-    {
-      parse_mode: "Markdown",
-      ...btn(
-        [
-          ["🚗 Курьер по Москве (бесплатно)", "delivery_courier"],
-          ["📦 СДЭК (рассчитаем отдельно)", "delivery_sdek"],
-          ["🤝 Самовывоз", "delivery_pickup"],
-        ]
-      ),
-    },
-  );
+  return ctx.reply("🚚 Как хотите получить заказ?", {
+    parse_mode: "Markdown",
+    ...btn([
+      ["🚗 Курьер по Москве (бесплатно)", "delivery_courier"],
+      ["📦 СДЭК (рассчитаем отдельно)", "delivery_sdek"],
+      ["🤝 Самовывоз", "delivery_pickup"],
+    ]),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -997,16 +983,14 @@ async function handleDelivery(ctx, msg, s, client) {
   } else {
     return ctx.reply(
       "Выберите способ получения:",
-      
+
       {
         parse_mode: "Markdown",
-        ...btn(
-          [
-            ["🚗 Курьер по Москве", "delivery_courier"],
-            ["📦 СДЭК", "delivery_sdek"],
-            ["🤝 Самовывоз", "delivery_pickup"],
-          ]
-        ),
+        ...btn([
+          ["🚗 Курьер по Москве", "delivery_courier"],
+          ["📦 СДЭК", "delivery_sdek"],
+          ["🤝 Самовывоз", "delivery_pickup"],
+        ]),
       },
     );
   }
@@ -1016,10 +1000,7 @@ async function handleDelivery(ctx, msg, s, client) {
   // Создаём черновик заказа в БД
   const order = await buildAndSaveOrder(s, client);
   await db.updateSession(s.id, {
-    orderId:
-      Number.isInteger(order?.id) && order.id > 0
-        ? order.id
-        : null,
+    orderId: Number.isInteger(order?.id) && order.id > 0 ? order.id : null,
     orderNumber: order.order_number,
     currentStep: STEPS.ORDER_SUMMARY,
   });
@@ -1078,16 +1059,14 @@ async function handleOrderSummary(ctx, msg, s, client) {
     );
   }
 
-  return ctx.reply("Подтвердите или отмените заказ:", 
-    {
-      parse_mode: "Markdown",
-      ...btn([
-        ["✅ Подтвердить", "order_confirm"],
-        ["✏️ Изменить", "order_edit"],
-        ["❌ Отменить", "cmd_cancel"],
-      ]),
-    }
-  );
+  return ctx.reply("Подтвердите или отмените заказ:", {
+    parse_mode: "Markdown",
+    ...btn([
+      ["✅ Подтвердить", "order_confirm"],
+      ["✏️ Изменить", "order_edit"],
+      ["❌ Отменить", "cmd_cancel"],
+    ]),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1114,16 +1093,13 @@ async function handleReview(ctx, msg, s, client) {
     );
   }
 
-  return ctx.reply(
-    "Оставьте отзыв:",
-    {
-      parse_mode: "Markdown",
-      ...btn([
-        ["⭐ Оставить отзыв", "review_write"],
-        ["➡️ Пропустить", "skip_review"],
-      ]),
-    },
-  );
+  return ctx.reply("Оставьте отзыв:", {
+    parse_mode: "Markdown",
+    ...btn([
+      ["⭐ Оставить отзыв", "review_write"],
+      ["➡️ Пропустить", "skip_review"],
+    ]),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1196,9 +1172,21 @@ async function handleCancel(ctx, client) {
 }
 
 async function handleStatus(ctx, client) {
-  const order = await db.getActiveOrderByTelegramId(ctx.from.id);
-  if (!order)
-    return ctx.reply("У вас нет активных заказов.\n/start — создать новый");
+  // Support: "/status" (current active order for user) or
+  // "/status HVL-00001" (fetch by order number, including DELIVERED/CLOSED)
+  const text = ctx.message?.text || "";
+  const parts = text.trim().split(/\s+/);
+  const requestedNumber = parts[1]?.toUpperCase();
+
+  let order;
+  if (requestedNumber) {
+    order = await db.getOrderByNumber(requestedNumber);
+    if (!order) return ctx.reply(`Заказ ${requestedNumber} не найден.`);
+  } else {
+    order = await db.getActiveOrderByTelegramId(ctx.from.id);
+    if (!order)
+      return ctx.reply("У вас нет активных заказов.\n/start — создать новый");
+  }
 
   const labels = {
     NEW: "⏳ Новый",
@@ -1213,13 +1201,25 @@ async function handleStatus(ctx, client) {
     MODELING_DONE: "✅ Модель готова",
   };
 
-  return ctx.reply(
+  // Build response; include delivered_at if present
+  const created =
+    order.created_at?.toISOString?.().split("T")[0] || "неизвестно";
+  const ready = order.ready_date || "уточняется";
+  const delivered = order.delivered_at
+    ? order.delivered_at.toISOString().split("T")[0]
+    : null;
+
+  let resp =
     `📋 *Заказ ${order.order_number}*\n` +
-      `Статус: *${labels[order.status] || order.status}*\n` +
-      `Создан: ${order.created_at?.toISOString?.().split("T")[0]}\n` +
-      `Готовность: ${order.ready_date || "уточняется"}`,
-    { parse_mode: "Markdown" },
-  );
+    `Статус: *${labels[order.status] || order.status}*\n` +
+    `Создан: ${created}\n` +
+    `Готовность: ${ready}`;
+
+  if (delivered) {
+    resp += `\nВыдан: ${delivered}`;
+  }
+
+  return ctx.reply(resp, { parse_mode: "Markdown" });
 }
 
 async function handleHelp(ctx) {
@@ -1260,8 +1260,13 @@ function buildUrgencyMessage(ctx, s) {
   const date = new Date();
   date.setDate(date.getDate() + baseDays);
 
-  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  let dateStr = date.toLocaleDateString('ru-RU', options);
+  const options = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  };
+  let dateStr = date.toLocaleDateString("ru-RU", options);
 
   // Сделать первую букву заглавной
   dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
@@ -1296,13 +1301,18 @@ async function buildOrderSummary(ctx, order, extra = "") {
   const price = order.total_price
     ? `${order.total_price} ₽`
     : "рассчитывается специалистом";
-  
+
   // Преобразуем дату готовности
   let readyDateStr = "уточняется"; // по умолчанию
   if (order.ready_date) {
     const readyDate = new Date(order.ready_date); // создаём объект Date
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }; // формат
-    readyDateStr = readyDate.toLocaleDateString('ru-RU', options); // на русском
+    const options = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }; // формат
+    readyDateStr = readyDate.toLocaleDateString("ru-RU", options); // на русском
     readyDateStr = readyDateStr.charAt(0).toUpperCase() + readyDateStr.slice(1); // заглавная первая буква
   }
 
@@ -1311,8 +1321,8 @@ async function buildOrderSummary(ctx, order, extra = "") {
       `🧱 Материал: *${escapeMarkdown(order.material_code)}* (${escapeMarkdown(order.method_code)})\n` +
       `📐 Размеры: *${escapeMarkdown(order.size_x)}×${escapeMarkdown(order.size_y)}×${escapeMarkdown(order.size_z)} мм*\n` +
       `🔢 Количество: *${escapeMarkdown(order.quantity)} шт*\n` +
-      `⏱ Срочность: *${urgencyLabels[order.urgency] || order.urgency}*\n` +
-      `🚚 Доставка: *${deliveryLabels[order.delivery_type] || order.delivery_type}*\n` +
+      `⏱ Срочность: *${escapeMarkdown(urgencyLabels[order.urgency] || order.urgency)}*\n` +
+      `🚚 Доставка: *${escapeMarkdown(deliveryLabels[order.delivery_type] || order.delivery_type)}*\n` +
       `📅 Готовность: *${escapeMarkdown(readyDateStr)}*\n` +
       `───────────────\n` +
       `💰 Стоимость: *${escapeMarkdown(price)}*${escapeMarkdown(extra)}\n\n` +
@@ -1331,28 +1341,25 @@ async function buildOrderSummary(ctx, order, extra = "") {
 async function buildAndSaveOrder(s, client) {
   // ✅ ЖЁСТКАЯ ВАЛИДАЦИЯ МАТЕРИАЛА
   const normalizedMaterial = normalizeMaterial(s.confirmedMaterial);
-  
+
   console.log("🧱 RAW MATERIAL:", s.confirmedMaterial);
   console.log("🧱 NORMALIZED:", normalizedMaterial);
-  
+
   const materialExists = await db.getMaterialByCode(normalizedMaterial);
-  
+
   if (!materialExists) {
     console.error("❌ INVALID MATERIAL:", normalizedMaterial);
-  
-    throw new Error(
-      `Material ${normalizedMaterial} does not exist in DB`
-    );
+
+    throw new Error(`Material ${normalizedMaterial} does not exist in DB`);
   }
-  
+
   const order = await db.createOrderDraft(client.id);
   console.log("ORDER ID:", order.id);
-  
-  const check = await db.pool.query(
-    "SELECT id FROM orders WHERE id = $1",
-    [order.id]
-  );
-  
+
+  const check = await db.pool.query("SELECT id FROM orders WHERE id = $1", [
+    order.id,
+  ]);
+
   console.log("FOUND IN DB:", check.rows);
   const material = await db.getMaterialByCode(s.confirmedMaterial);
 
@@ -1403,9 +1410,7 @@ async function saveUserMessage(msg, client, s) {
     (msg?.photo ? msg.photo[msg.photo.length - 1].file_id : null);
   await db.saveDialogMessage({
     clientId: client.id,
-    orderId: Number.isInteger(s.orderId) && s.orderId > 0
-      ? s.orderId
-      : null,
+    orderId: Number.isInteger(s.orderId) && s.orderId > 0 ? s.orderId : null,
     orderNumber: s.orderNumber,
     sessionId: s.id,
     role: "USER",
@@ -1436,15 +1441,12 @@ function extractMaterial(text) {
   if (t.includes("NYLON") || t.includes("НЕЙЛОН") || t.includes("PA"))
     return "NYLON";
 
-  if (t.includes("SILK") || t.includes("ШЕЛК"))
-    return "SILK";
+  if (t.includes("SILK") || t.includes("ШЕЛК")) return "SILK";
 
   if (t.includes("SBS")) return "SBS";
-  if (t.includes("PC") || t.includes("ПОЛИКАРБ"))
-    return "PC";
+  if (t.includes("PC") || t.includes("ПОЛИКАРБ")) return "PC";
 
-  if (t.includes("PLA") || t.includes("ПЛА"))
-    return "PLA";
+  if (t.includes("PLA") || t.includes("ПЛА")) return "PLA";
 
   return null;
 }
@@ -1506,7 +1508,9 @@ function parseUrgency(text) {
 
 // Принимает массив пар [text, callback] и опциональный доп.ряд
 function btn(rows, extra = null) {
-  const keyboard = rows.map(([text, cb]) => [{ text: String(text), callback_data: String(cb) }]);
+  const keyboard = rows.map(([text, cb]) => [
+    { text: String(text), callback_data: String(cb) },
+  ]);
   if (extra) {
     if (Array.isArray(extra.inline_keyboard)) {
       extra.inline_keyboard.forEach((row) => keyboard.push(row));
