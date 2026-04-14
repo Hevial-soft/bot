@@ -15,7 +15,7 @@ cp .env.example .env
 ```
 Заполнить:
 - `BOT_TOKEN` — токен от @BotFather
-- `SPECIALIST_CHAT_ID` — ваш Telegram ID (узнать через @userinfobot)
+- `SPECIALIST_CHAT_ID` — ваш Telegram ID
 - `ANTHROPIC_API_KEY` — ключ Claude API
 - `DB_PASSWORD` — пароль PostgreSQL
 

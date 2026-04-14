@@ -1434,8 +1434,22 @@ function extractMaterial(text) {
 
   const t = text.toUpperCase().replace(/[^A-ZА-Я0-9_]/g, " ");
 
-  if (t.includes("RESIN") || t.includes("СМОЛ") || t.includes("ФОТО"))
+  // ── ФОТОПОЛИМЕР / RESIN ──
+  if (
+    t.includes("ФОТОПОЛИМЕР") ||
+    t.includes("PHOTOPOLYMER") ||
+    t.includes("UV RESIN") ||
+    t.includes("UV") ||
+    t.includes("SLA") ||
+    t.includes("LCD")
+  ) {
     return "RESIN_STD";
+  }
+  
+  // ── СМОЛА (разговорное) ──
+  if (t.includes("СМОЛ") || t.includes("RESIN")) {
+    return "RESIN_STD";
+  }
 
   if (t.includes("FLEX")) return "RESIN_FLEX";
   if (t.includes("PEEK")) return "PEEK";
