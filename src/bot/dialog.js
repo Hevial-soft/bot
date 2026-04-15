@@ -1123,9 +1123,6 @@ async function handleTransferToSpecialist(ctx, client) {
       "Опишите вашу задачу — специалист ответит в рабочее время (пн–пт 10:00–19:00 МСК).",
     { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } },
   );
-
-  // Постим в группу с кнопкой "Взять диалог" (мост)
-  await notify.notifySpecialistGroup(ctx, client, s);
 }
 
 async function handleWaitingSpecialist(ctx, msg, s, client) {
@@ -1134,6 +1131,11 @@ async function handleWaitingSpecialist(ctx, msg, s, client) {
     msg?.document?.file_id ||
     (msg?.photo ? msg.photo[msg.photo.length - 1].file_id : null);
   const msgType = msg?.document ? "FILE" : msg?.photo ? "PHOTO" : "TEXT";
+  
+  if (!s.specialist_notified) {
+    await notify.notifySpecialistGroup(ctx, client, s);
+    await db.updateSession(s.id, { specialist_notified: true });
+  }
 
   const forwarded = await notify.forwardThroughBridge(
     ctx.chat.id,
