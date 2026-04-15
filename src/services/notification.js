@@ -318,9 +318,23 @@ async function forwardThroughBridge(fromChatId, text, fileId, messageType) {
   if (!bridge || !_bot) return false;
 
   // Определяем направление
-  const isSpecialist = bridge.specialist_chat_id === fromChatId;
-  const targetId     = isSpecialist ? bridge.client_chat_id : bridge.specialist_chat_id;
-  const prefix       = isSpecialist
+  const fromId = String(fromChatId);
+  
+  const isSpecialist = String(bridge.specialist_chat_id) === fromId;
+  const targetId = isSpecialist
+    ? String(bridge.client_chat_id)
+    : String(bridge.specialist_chat_id);
+  
+  if (String(targetId) === fromId) {
+    console.error('[Bridge ERROR] Self-forward detected', {
+      fromChatId,
+      targetId,
+      bridge,
+    });
+    return false;
+  }
+  
+  const prefix = isSpecialist
     ? '💬 *Специалист:*'
     : `👤 *Клиент [${bridge.order_number || ''}]:*`;
 

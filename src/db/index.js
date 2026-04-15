@@ -713,12 +713,13 @@ async function getActiveOrders(limit = 20) {
 // Заказы конкретного специалиста
 async function getOrdersBySpecialist(specialistTelegramId) {
   const res = await pool.query(
-    `SELECT o.*, c.first_name, c.username
+    `SELECT o.id, o.created_at, o.status, c.first_name, c.username
      FROM orders o
-     LEFT JOIN clients c ON o.client_id = c.id
-     WHERE o.assigned_specialist_id=$1
+     JOIN clients c ON o.client_id = c.id
+     WHERE o.assigned_specialist_id = $1
        AND o.status NOT IN ('CANCELLED','CLOSED','DELIVERED')
-     ORDER BY o.created_at DESC`,
+     ORDER BY o.created_at DESC
+     LIMIT 50`,
     [specialistTelegramId],
   );
   return res.rows;
