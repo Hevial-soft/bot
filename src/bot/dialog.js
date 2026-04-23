@@ -484,14 +484,12 @@ async function handleModelingSummary(ctx, msg, s, client) {
     }
 
     // Проверяем, что order существует
-    const orderId =
-      order && Number.isInteger(order.id) && order.id > 0 ? order.id : null;
     const orderNumber = order?.order_number ?? "№?";
 
     // Обновляем сессию с правильным orderId
     await db.updateSession(s.id, {
       currentStep: STEPS.MODELING_CONFIRMED,
-      orderId,
+      orderNumber,
     });
 
     // Отправляем уведомление специалистам

@@ -12,6 +12,7 @@
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
     "pg": "^8.11.3",
+    "pm2": "^6.0.14",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
